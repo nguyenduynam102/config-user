@@ -1,0 +1,102 @@
+YÊU CẦU PHÁT TRIỂN PHẦN MỀM WINUSER RDP MANAGER v1.0
+I. MỤC TIÊU
+Xây dựng phần mềm WinUser RDP Manager chạy trên Windows 10 Pro 64-bit, giao diện tiếng Việt, dễ sử dụng, gọn nhẹ, có thể chạy bằng file EXE, không yêu cầu cài Visual Studio trên máy sử dụng.
+Công nghệ ưu tiên: C# WinForms, .NET Framework 4.8. Có thể điều chỉnh công nghệ nếu cần thiết để bảo đảm ổn định, dễ biên dịch và triển khai.
+Phần mềm chạy với quyền Administrator để quản lý nhiều tài khoản Windows local phục vụ Remote Desktop (RDP).
+II. CÁC CHỨC NĂNG BẮT BUỘC
+1. Quản lý tài khoản Windows
+- Hiển thị danh sách toàn bộ tài khoản Windows local hiện có.
+- Tạo tài khoản mới, đặt mật khẩu.
+- Chọn một hoặc nhiều tài khoản để thao tác đồng thời.
+- Khóa/mở khóa tài khoản Windows độc lập với quyền RDP.
+- Bật/tắt quyền đăng nhập RDP độc lập với trạng thái tài khoản.
+- Khi khóa tài khoản đang kết nối RDP: ngăn đăng nhập mới, ngắt kết nối RDP nhưng giữ nguyên phiên làm việc và các chương trình đang chạy; không đăng xuất user.
+- Không tự động cấp quyền Administrator cho tài khoản mới.
+- Có cơ chế bảo vệ tài khoản quản trị đang sử dụng, tránh tự khóa mất quyền truy cập.
+Lưu ý: Windows 10 Pro thông thường chỉ hỗ trợ một phiên tương tác tại một thời điểm, không yêu cầu sửa đổi hệ thống để mở nhiều phiên RDP đồng thời.
+2. Đồng bộ Desktop giữa các user
+- Chọn một user nguồn và một hoặc nhiều user đích.
+- Hiển thị danh sách shortcut kèm biểu tượng và hình xem trước bố trí Desktop.
+- Cho phép chọn từng shortcut hoặc chọn tất cả.
+- Thêm hoặc xóa shortcut cho user đích.
+- Chỉ xử lý shortcut .lnk, .url, không sao chép tài liệu hay dữ liệu cá nhân.
+- Không ghi đè shortcut trùng, không sửa Desktop chung (Public Desktop).
+- Có thể chuẩn bị Desktop cho user mới trước lần đăng nhập đầu tiên.
+- Có xem trước, sao lưu và khôi phục trước khi thay đổi.
+- Nếu shortcut trỏ đến chương trình không tồn tại, cảnh báo nhưng cho phép sao chép.
+3. Import Registry theo user
+- Chọn file .reg và một hoặc nhiều user đích.
+- Áp dụng Registry đúng tài khoản được chọn, không nhầm sang tài khoản Administrator.
+- Hỗ trợ cấu hình Registry cho user chưa đăng nhập lần đầu khi khả thi.
+- Cho phép lưu file .reg vào bộ cấu hình mặc định để sử dụng lại.
+- Kiểm tra nội dung, cảnh báo khóa hệ thống và sao lưu trước khi thay đổi.
+- Không tự ý thay đổi Registry dùng chung toàn máy.
+4. Tạo thư mục riêng và phân quyền
+- Quản trị viên chọn thư mục gốc trên ổ đĩa.
+- Tự tạo thư mục con theo từng user Windows.
+- Phân quyền NTFS: user sở hữu, Administrators và SYSTEM có Full Control; user thông thường khác không được truy cập.
+- Hạn chế hiển thị thư mục riêng của user khác khi duyệt thông thường nếu khả thi.
+- Bảo đảm phân quyền thực tế, không chỉ sử dụng thuộc tính Hidden.
+- Không tự ý xóa dữ liệu trong thư mục riêng.
+5. Bộ cấu hình mặc định
+- Cho phép tạo, đặt tên, chỉnh sửa, sao chép và xóa nhiều bộ cấu hình.
+- Mỗi bộ có thể chứa: quyền RDP, shortcut Desktop, file Registry, thư mục riêng và cấu hình ổ đĩa NAS.
+- Chọn bộ cấu hình khi tạo user mới hoặc áp dụng cho user đã tồn tại.
+- Có xem trước các thay đổi và xác nhận trước khi áp dụng.
+- Lưu cấu hình để sử dụng lại mà không cần nhập lại toàn bộ thông tin.
+6. Quản lý ổ đĩa mạng TrueNAS SCALE
+Máy chủ NAS sử dụng TrueNAS SCALE, kết nối SMB qua mạng LAN.
+Yêu cầu:
+- Quản lý nhiều SMB Share và nhiều ổ đĩa ánh xạ.
+- Chọn user Windows, tài khoản NAS, đường dẫn UNC và ký tự ổ đĩa Z:, Y:, X:...
+- Hỗ trợ cả tài khoản NAS dùng chung theo bộ phận (Nhân viên, Kế toán...) và tài khoản NAS cá nhân.
+- Nhiều user Windows có thể cùng dùng một tài khoản NAS theo bộ phận.
+- Mỗi user Windows có cấu hình ánh xạ độc lập; có thể sử dụng cùng ký tự ổ đĩa nhưng trỏ tới thư mục khác nhau.
+- Administrator nhập tài khoản và mật khẩu NAS khi cấu hình. User đích không phải nhập mật khẩu hoặc kích hoạt thủ công.
+- Ổ đĩa NAS phải tự động kết nối ngay từ lần đăng nhập Windows/RDP đầu tiên, khi NAS và mạng sẵn sàng.
+- Tự kết nối lại khi đăng nhập và có cơ chế thử lại khi NAS tạm thời mất kết nối.
+- Kiểm tra kết nối, phát hiện sai mật khẩu, thiếu quyền, trùng ký tự ổ đĩa và xung đột thông tin đăng nhập SMB.
+- Cho phép cập nhật mật khẩu NAS, sửa hoặc xóa ánh xạ mà không xóa dữ liệu trên NAS.
+- Lưu cấu hình ánh xạ vào các bộ cấu hình mặc định.
+Phân quyền dữ liệu do TrueNAS SCALE thực thi thông qua tài khoản, nhóm và ACL. Phần mềm không tự ý sửa quyền trên NAS. Không ánh xạ một share không đồng nghĩa đã chặn quyền truy cập vào share đó.
+7. Bảo mật thông tin xác thực NAS
+Ưu tiên kiến trúc:
+- Ứng dụng quản trị WinUser RDP Manager.
+- Credential Broker: thành phần bảo vệ và quản lý thông tin xác thực.
+- Logon Agent: thành phần chạy trong phiên user để tự động ánh xạ ổ đĩa.
+Yêu cầu kỹ thuật:
+- Không lưu mật khẩu NAS dạng văn bản thuần trong JSON, Registry, script, file log hoặc tham số dòng lệnh.
+- Có cơ chế lưu trữ, cấp phát và thu hồi thông tin xác thực an toàn.
+- Xác định đúng user Windows bằng SID và ngữ cảnh đăng nhập.
+- Không cho user thông thường yêu cầu thông tin xác thực của user khác.
+- Không sử dụng tài khoản quản trị TrueNAS để ánh xạ dữ liệu thông thường.
+- Phải đánh giá và kiểm thử tính khả thi của Broker/Agent, không coi kiến trúc đề xuất là đã được kiểm chứng.
+- Phải nêu rõ giới hạn bảo mật khi nhiều user sử dụng chung một tài khoản NAS.
+8. Sao lưu, khôi phục và nhật ký
+- Hiển thị trước các thao tác có thể ảnh hưởng dữ liệu hoặc quyền truy cập.
+- Sao lưu các thành phần hỗ trợ khôi phục trước khi thay đổi.
+- Cho phép khôi phục shortcut, cấu hình và các khóa Registry đã sao lưu trong phạm vi khả thi.
+- Nhật ký ghi thời gian, tài khoản, chức năng, kết quả và lỗi.
+- Không ghi mật khẩu hoặc thông tin bí mật vào nhật ký.
+- Thông báo rõ thao tác thành công, thất bại hoặc đang chờ hoàn tất.
+- Không tự động xóa dữ liệu cá nhân hoặc đăng xuất user ngoài yêu cầu đã thống nhất.
+III. YÊU CẦU GIAO DIỆN
+- Giao diện tiếng Việt, đơn giản, dễ sử dụng.
+- Có các mục: Quản lý User, RDP, Đồng bộ Desktop, Registry, Thư mục riêng, Cấu hình mặc định, NAS, Sao lưu/Khôi phục và Nhật ký.
+- Có checkbox chọn nhiều user và nút Chọn tất cả.
+- Có nút Áp dụng, Xem trước, Kiểm tra, Khôi phục.
+- Hiển thị rõ trạng thái tài khoản, quyền RDP và kết nối NAS.
+- Không yêu cầu người sử dụng biết lập trình hoặc phải nhập lệnh PowerShell thủ công.
+IV. YÊU CẦU TRIỂN KHAI
+1. Kiểm tra và tận dụng mã nguồn WinUser RDP Manager v0.1 nếu được cung cấp; không phụ thuộc vào mã nguồn cũ nếu chất lượng không đạt.
+2. Triển khai theo module, ưu tiên quản lý user/RDP trước, sau đó Desktop, Registry, NTFS, bộ cấu hình và NAS.
+3. Có file Build.cmd hoặc công cụ biên dịch tự động; ưu tiên Visual Studio Build Tools hoặc .NET SDK, không bắt buộc Visual Studio IDE.
+4. Bàn giao mã nguồn đầy đủ, file EXE sau khi biên dịch thành công, hướng dẫn cài đặt và sử dụng bằng tiếng Việt.
+5. Kiểm thử trên Windows 10 Pro 64-bit, đặc biệt các trường hợp user đang RDP, user chưa đăng nhập lần đầu, profile chưa tồn tại và NAS mất kết nối.
+6. Không dùng phương pháp sửa hệ thống để vượt giới hạn nhiều phiên RDP của Windows 10 Pro.
+7. Không đánh dấu chức năng hoàn thành nếu chưa hoạt động thực tế hoặc chưa được kiểm thử.
+V. YÊU CẦU CODEX THỰC HIỆN
+Hãy tiếp nhận toàn bộ yêu cầu trên làm đặc tả chính thức của dự án WinUser RDP Manager v1.0.
+Chủ động lựa chọn phương pháp kỹ thuật tối ưu, ưu tiên nhanh, ổn định, bảo mật và dễ sử dụng. Không hỏi lại những nội dung đã thống nhất.
+Trước tiên, kiểm tra môi trường và mã nguồn hiện có, xác định các vấn đề kỹ thuật quan trọng, sau đó bắt đầu triển khai. Những chức năng chưa thể bảo đảm trên Windows phải được giải thích rõ, đưa ra phương án khả thi thay thế và không âm thầm bỏ qua.
+Sản phẩm cuối cùng phải là phần mềm Windows thực sự sử dụng được, không chỉ là mã nguồn hoặc giao diện mô phỏng.

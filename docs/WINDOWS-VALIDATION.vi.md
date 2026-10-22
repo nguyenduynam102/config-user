@@ -1,0 +1,41 @@
+# Kiểm thử Windows 10 Pro x64 / TrueNAS SCALE
+
+Trạng thái lúc bàn giao: **chưa chạy các ca Windows bên dưới**. Chỉ kiểm tra logic cross-platform và build/publish Windows đã chạy. Không nghiệm thu v1.0 trước khi ghi bằng chứng vào bảng này. Cần một VM Windows 10 Pro x64 có snapshot, tài khoản quản trị dự phòng, một máy khách RDP và TrueNAS SMB thử nghiệm. Không thử trên dữ liệu sản xuất.
+
+| Nhóm | Ca kiểm thử, kết quả bắt buộc | Trạng thái |
+|---|---|---|
+| Khởi động | EXE self-contained mở trên máy không có Visual Studio/.NET; UAC đúng; GUI không bị cắt ở DPI 100/150/200% | Chưa chạy |
+| Cài đặt | Install.cmd trên Windows PowerShell 5.1, đường dẫn có khoảng trắng; service chạy LocalSystem; user thường không sửa được EXE/dữ liệu broker | Chưa chạy |
+| User | Liệt kê SID đúng; tạo user thường; mật khẩu không đạt policy báo lỗi; không tự thêm Administrators; tên tiếng Việt | Chưa chạy |
+| Bảo vệ admin | Từ chối khóa/gỡ RDP của admin đang chạy ứng dụng, tài khoản RID tích hợp; không mất quyền dự phòng | Chưa chạy |
+| RDP độc lập | Tắt RDP gán deny theo SID, không disable account; bật gỡ deny trực tiếp và thêm nhóm; quyền từ nhóm/domain có cảnh báo | Chưa chạy |
+| Phiên đang chạy | Mở ứng dụng trong RDP user thử; khóa user; phiên chuyển disconnected, ứng dụng vẫn chạy khi mở lại; không logoff; không ngắt console | Chưa chạy |
+| Đa lựa chọn | User thành công và user bị bảo vệ cùng batch: báo riêng từng kết quả, không thông báo tất cả thành công | Chưa chạy |
+| Profile mới | Tạo user chưa đăng nhập; Desktop/NTUSER.DAT tạo bằng CreateProfile, owner/quyền đúng; lần đăng nhập đầu dùng được | Chưa chạy |
+| Desktop | Chỉ .lnk/.url; loại tài liệu; Public Desktop không đổi; trùng giữ nguyên; cảnh báo đích mất; chọn nhiều đích | Chưa chạy |
+| Filesystem | Hardlink/symlink/junction và thay đường dẫn đồng thời bị chặn; không sao chép/ghi/xóa tệp ngoài phạm vi; NT native flags tương thích Win10 | Chưa chạy |
+| Desktop restore | Thêm/xóa, khôi phục, khôi phục ngược bản BeforeRestore; giữ dữ liệu không thuộc manifest | Chưa chạy |
+| Registry | HKCU user đích thay đổi, admin không đổi; hive loaded và unloaded; file UTF-16 BOM/UTF-8; kiểu SZ/DWORD; rollback giá trị cũ và không tồn tại | Chưa chạy |
+| Registry lỗi | HKLM, Run, hex, xóa, file sai bị từ chối trước ghi; hive bận báo lỗi; không để hive tạm bị mount sau lỗi | Chưa chạy |
+| NTFS | User owner + Full Control; Administrators/SYSTEM Full; user khác Access Denied; không nhận thư mục tồn tại; không xóa dữ liệu | Chưa chạy |
+| Cấu hình | Tạo/đổi tên/sao chép/xóa/restore; apply khi tạo và user hiện hữu; lỗi giữa quy trình báo partial; backup có thể mở lại | Chưa chạy |
+| NAS lần đầu | Broker cài trước login; cấu hình trước lần login đầu; Agent tự chạy, ổ hiện trong Explorer user; admin không cần nhập lệnh | Chưa chạy |
+| NAS tách biệt | Hai SID cùng Z: khác share; tài khoản phòng ban chung và cá nhân; không trả credential của SID khác | Chưa chạy |
+| NAS mất mạng | Login khi NAS tắt, bật lại NAS: retry 30 giây; không treo GUI; báo trạng thái có thời gian | Chưa chạy |
+| NAS lỗi | Sai password/deny ACL/ổ trùng/xung đột 1219; báo đúng mã, không ngắt ổ ngoài phạm vi | Chưa chạy |
+| NAS sửa/xóa | Đổi password, share, ổ; mở tệp gây busy; Agent restart vẫn nhận mapping do nó quản lý; xóa không xóa dữ liệu NAS | Chưa chạy |
+| Broker/Agent | Client thường giả SID không được; máy khác không truy cập pipe; pipe giả PID không được tin; service restart tự phục hồi | Chưa chạy |
+| Bí mật | Quét JSON/REG/script/log/commandline không có plaintext NAS password; user thường không đọc được ciphertext/backup broker | Chưa chạy |
+| Tài khoản NAS chung | Chứng minh người được cấp lấy được bí mật của chính mình; kiểm thử NAS revoke/rotate; chấp nhận giới hạn bằng văn bản | Chưa chạy |
+| Nhật ký | Mỗi thao tác thành công/lỗi có actor/target/time/code; không credential; kiểm tra file status user giả mạo không được dùng để ra quyết định quyền | Chưa chạy |
+
+## Phạm vi chưa đáp ứng đầy đủ đặc tả
+
+- Chưa chứng minh ứng dụng thực thi được trên Windows 10 Pro/TrueNAS; Broker/Agent mới biên dịch, chưa chứng minh khả thi trên đích.
+- Preview Desktop chưa thể hiện bố trí tọa độ thực tế. Cần đọc định dạng bố trí Explorer phù hợp từng phiên bản hoặc ghi nhận bằng agent trong phiên nguồn; không suy diễn lưới hiện tại là bố trí thật.
+- Import REG giới hạn SZ/DWORD và vùng Software an toàn; chưa nhận đầy đủ kiểu REG_BINARY/MULTI_SZ/EXPAND_SZ, file multiline và khóa khác sau cảnh báo.
+- HKLM Run không bảo đảm thứ tự chạy ngay trước ứng dụng user. Nếu yêu cầu ổ có trước ứng dụng đầu tiên, cần đánh giá Scheduled Task/Group Policy đồng bộ đăng nhập trong lab; không có bảo đảm mạng luôn sẵn sàng.
+- Chưa có bộ kiểm thử Windows tự động, chứng thư ký EXE, bộ cài MSI, tối ưu GUI cho danh sách hàng nghìn tài khoản hay bảo đảm phục hồi giao dịch nhiều bước.
+- Giấu tên thư mục local bằng NTFS không được bảo đảm; ACL bảo vệ nội dung. Không thay ACL TrueNAS hoặc vá giới hạn RDP.
+
+Không đánh dấu các dòng trên đã đạt khi chỉ chạy kiểm tra parser hoặc chỉ nhìn thấy cửa sổ GUI.
