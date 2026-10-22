@@ -7,7 +7,7 @@
 
 ## Tải chương trình
 
-- [Tải WinUser cho Windows x64 (ZIP chứa EXE và bộ cài)](https://github.com/nguyenduynam102/config-user/releases/download/v1.0.0-preview.1/WinUser-v1.0-preview-win-x64.zip)
+- [Tải WinUser cho Windows x64 (ZIP chứa EXE và bộ cài)](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview-win-x64.zip)
 - [Xem bản phát hành và tải mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.1)
 
 Giải nén ZIP trước khi chạy. Đây là **bản thử nghiệm, chưa kiểm thử thực tế trên Windows/TrueNAS**. Không dùng trên dữ liệu sản xuất trước khi hoàn thành các ca kiểm thử trong tài liệu.
