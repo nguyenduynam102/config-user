@@ -26,5 +26,9 @@ with tarfile.open(archive) as tar: tar.extractall('/workspace/tools/dotnet',filt
 PY
 fi
 "$sdk_root/dotnet" run --project tests/PolicyChecks -c Release
+fixture_dir=$(mktemp -d /tmp/winuser-netapi.XXXXXX)
+cc -shared -fPIC -Wall -Wextra -Werror tests/NativeEnumerationChecks/netapi_fixture.c -o "$fixture_dir/libnetapi_fixture.so"
+"$sdk_root/dotnet" run --project tests/NativeEnumerationChecks -c Release -- "$fixture_dir/libnetapi_fixture.so"
+rm -rf "$fixture_dir"
 "$sdk_root/dotnet" publish src/WinUser/WinUser.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
 cp Install.cmd Install.ps1 Uninstall.cmd README.md docs/WINDOWS-VALIDATION.vi.md artifacts/win-x64/

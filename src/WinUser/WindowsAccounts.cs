@@ -6,18 +6,16 @@ public record LocalUser(string Name, string Sid, bool Enabled, bool Rdp);
 public static class WindowsAccounts
 {
     const uint Disabled = 2;
-    [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] struct User23 { public string Name, FullName, Comment; public uint Flags; public IntPtr Sid; }
     [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] struct User1 { public string Name, Password; public uint PasswordAge, Privilege; public string? Home, Comment; public uint Flags; public string? Script; }
     [StructLayout(LayoutKind.Sequential)] struct FlagsInfo { public uint Flags; }
     [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] struct Member { public string Name; }
     [StructLayout(LayoutKind.Sequential)] struct Session { public int Id; public IntPtr Station; public int State; }
-    [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetUserEnum(string? server, int level, int filter, out IntPtr buffer, int max, out int count, out int total, ref int resume);
     [DllImport("Netapi32.dll")] static extern int NetApiBufferFree(IntPtr buffer);
     [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetUserAdd(string? server, int level, ref User1 info, out int error);
     [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetUserSetInfo(string? server, string name, int level, ref FlagsInfo info, out int error);
     [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetLocalGroupAddMembers(string? server, string group, int level, ref Member member, int count);
     [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetLocalGroupDelMembers(string? server, string group, int level, ref Member member, int count);
-    [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetLocalGroupGetMembers(string? server, string group, int level, out IntPtr buffer, int max, out int count, out int total, ref int resume);
+    [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetLocalGroupGetMembers(string? server, string group, int level, out IntPtr buffer, int max, out int count, out int total, ref nuint resume);
     [DllImport("wtsapi32.dll", SetLastError=true)] static extern bool WTSEnumerateSessions(IntPtr server, int reserved, int version, out IntPtr sessions, out int count);
     [DllImport("wtsapi32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern bool WTSQuerySessionInformation(IntPtr server, int session, int info, out IntPtr buffer, out int size);
     [DllImport("wtsapi32.dll")] static extern void WTSFreeMemory(IntPtr memory);
@@ -28,24 +26,19 @@ public static class WindowsAccounts
     static void Check(int code) { if (code != 0) throw new Win32Exception(code); }
     public static List<LocalUser> List()
     {
-        var members = new HashSet<string>(); int resume = 0, status;
+        var members = new HashSet<string>(); nuint resume = 0; int status;
         do
         {
             status = NetLocalGroupGetMembers(null, Group("S-1-5-32-555"), 0, out var p, -1, out var n, out _, ref resume);
             try { if (status is not (0 or 234)) Check(status); for (int i=0;i<n;i++) members.Add(new SecurityIdentifier(Marshal.ReadIntPtr(p,i*IntPtr.Size)).Value); }
             finally { if (p != IntPtr.Zero) NetApiBufferFree(p); }
         } while (status == 234);
-        var result = new List<LocalUser>(); resume = 0;
-        do
+        var result = new List<LocalUser>();
+        foreach(var u in AccountEnumeration.Read())
         {
-            status = NetUserEnum(null, 23, 2, out var p, -1, out var n, out _, ref resume);
-            try
-            {
-                if (status is not (0 or 234)) Check(status);
-                for (int i=0;i<n;i++) { var u=Marshal.PtrToStructure<User23>(p+i*Marshal.SizeOf<User23>()); var sid=new SecurityIdentifier(u.Sid).Value; result.Add(new(u.Name,sid,(u.Flags & Disabled)==0,members.Contains(sid) && !RdpRights.Denied(sid))); }
-            }
-            finally { if (p != IntPtr.Zero) NetApiBufferFree(p); }
-        } while(status == 234);
+            var sid=new SecurityIdentifier(u.Sid,0).Value;
+            result.Add(new(u.Name,sid,(u.Flags & Disabled)==0,members.Contains(sid) && !RdpRights.Denied(sid)));
+        }
         return result.OrderBy(u=>u.Name).ToList();
     }
     public static LocalUser Fresh(LocalUser user) => List().Single(u => u.Sid == user.Sid && u.Name == user.Name);

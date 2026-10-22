@@ -39,3 +39,11 @@ Trạng thái lúc bàn giao: **chưa chạy các ca Windows bên dưới**. Ch�
 - Giấu tên thư mục local bằng NTFS không được bảo đảm; ACL bảo vệ nội dung. Không thay ACL TrueNAS hoặc vá giới hạn RDP.
 
 Không đánh dấu các dòng trên đã đạt khi chỉ chạy kiểm tra parser hoặc chỉ nhìn thấy cửa sổ GUI.
+
+## Hồi quy Preview 2
+
+- Windows trước đó đã mở được giao diện nhưng danh sách user lỗi “The system call level is not correct” (ảnh do người dùng cung cấp).
+- Nguyên nhân trong mã: NetUserEnum level 23 không được API hỗ trợ. Đổi sang Enum level 0 + GetInfo level 23; sửa resume handle nhóm thành UIntPtr cho x64.
+- Đã chạy trên Linux: 39 policy checks + 5 native-contract checks với fixture C; build/publish x64. Fixture từ chối enum level khác 0 và getinfo khác 23, kiểm tra trả về nhiều trang/lỗi và số buffer chưa giải phóng.
+- Còn phải chạy trên Windows: mở Preview 2, danh sách user hiển thị đúng sau khởi động/Làm mới; nhóm RDP và trạng thái bật khớp Local Users and Groups; không thay đổi tài khoản chỉ khi mở giao diện.
+- Tài liệu API: https://learn.microsoft.com/en-us/windows/win32/api/lmaccess/nf-lmaccess-netuserenum và https://learn.microsoft.com/en-us/windows/win32/api/lmaccess/nf-lmaccess-netlocalgroupgetmembers

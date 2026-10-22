@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest><AssemblyName>WinUser</AssemblyName>
     <PlatformTarget>x64</PlatformTarget>
+    <Version>1.0.0-preview.2</Version><FileVersion>1.0.0.2</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />

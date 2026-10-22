@@ -14,7 +14,7 @@ public sealed class MainForm:Form
     readonly TextBox nasInfo=new(){Dock=DockStyle.Fill,Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Both};
     public MainForm()
     {
-        Text="WinUser RDP Manager v1.0 — Bản triển khai cần kiểm thử Windows";Width=1260;Height=820;MinimumSize=new Size(1000,650);StartPosition=FormStartPosition.CenterScreen;
+        Text="WinUser RDP Manager v1.0 Preview 2 — Cần kiểm thử Windows";Width=1260;Height=820;MinimumSize=new Size(1000,650);StartPosition=FormStartPosition.CenterScreen;
         users.Columns.Add(new DataGridViewCheckBoxColumn(){Name="Selected",HeaderText="Chọn",Width=48});
         users.Columns.Add(new DataGridViewTextBoxColumn(){DataPropertyName="Name",HeaderText="User",ReadOnly=true,Width=140});
         users.Columns.Add(new DataGridViewCheckBoxColumn(){DataPropertyName="Enabled",HeaderText="Bật",ReadOnly=true,Width=45});

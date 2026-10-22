@@ -7,10 +7,14 @@
 
 ## Tải chương trình
 
-- [Tải WinUser cho Windows x64 (ZIP chứa EXE và bộ cài)](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview-win-x64.zip)
-- [Xem bản phát hành và tải mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.1)
+- [Tải WinUser cho Windows x64 (ZIP chứa EXE và bộ cài)](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview2-win-x64.zip)
+- [Xem bản phát hành và tải mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.2)
 
 Giải nén ZIP trước khi chạy. Đây là **bản thử nghiệm, chưa kiểm thử thực tế trên Windows/TrueNAS**. Không dùng trên dữ liệu sản xuất trước khi hoàn thành các ca kiểm thử trong tài liệu.
+
+## Bản Preview 2 — sửa lỗi tải danh sách user
+
+Sửa lỗi Windows 124 “The system call level is not correct”: `NetUserEnum` dùng level 0 để liệt kê tên; `NetUserGetInfo` level 23 đọc SID/flags từng user. Sửa `NetLocalGroupGetMembers.resumehandle` thành con trỏ có kích thước theo kiến trúc x64. Có 5 kiểm tra hồi quy native-contract bằng thư viện C giả lập trên Linux: phân trang, SID/flags, tài khoản bị xóa giữa chừng, lỗi native, giải phóng bộ nhớ và gọi lặp. Đây không thay thế kiểm thử Windows thật. Tiêu đề cửa sổ bản mới hiển thị **Preview 2**.
 
 ## Biên dịch và cài đặt
 
