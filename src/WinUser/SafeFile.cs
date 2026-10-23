@@ -47,7 +47,8 @@ internal static class SafeFile
         // is insufficient in user-controlled directories. Use the native create disposition.
         return CreateOnly(path);
     }
-    static SafeFileHandle CreateOnly(string path)
+    public static void CreateDirectoryData(string path){using var handle=CreateOnly(path,true);}
+    static SafeFileHandle CreateOnly(string path,bool directory=false)
     {
         path=Path.GetFullPath(path);if(path.StartsWith(@"\\"))throw new IOException("Chỉ hỗ trợ đường dẫn cục bộ.");
         var text=@"\??\"+path;var buffer=Marshal.StringToHGlobalUni(text);var up=Marshal.AllocHGlobal(Marshal.SizeOf<Unicode>());
@@ -55,7 +56,7 @@ internal static class SafeFile
         {
             Marshal.StructureToPtr(new Unicode{Length=checked((ushort)(text.Length*2)),Maximum=checked((ushort)((text.Length+1)*2)),Buffer=buffer},up,false);
             var attr=new Attributes{Length=(uint)Marshal.SizeOf<Attributes>(),Name=up,Flags=0x1040};
-            var status=NtCreateFile(out var h,0x40100080,ref attr,out _,IntPtr.Zero,0x80,1,2,0x60,IntPtr.Zero,0);
+            var status=NtCreateFile(out var h,directory?0x100081u:0x40100080u,ref attr,out _,IntPtr.Zero,directory?0x10u:0x80u,1,2,directory?0x21u:0x60u,IntPtr.Zero,0);
             if(status<0){h?.Dispose();throw new Win32Exception((int)RtlNtStatusToDosError(status));}return h;
         }
         finally{Marshal.FreeHGlobal(up);Marshal.FreeHGlobal(buffer);}

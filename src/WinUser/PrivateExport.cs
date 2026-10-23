@@ -1,6 +1,4 @@
 using System.IO.Compression;
-using System.Runtime.InteropServices;
-using System.ComponentModel;
 namespace WinUser;
 public sealed record ExportEntry(string Source,string Relative,bool Directory,long Bytes);
 public sealed record ExportPlan(string Root,string Destination,IReadOnlyList<ExportEntry> Entries)
@@ -9,7 +7,6 @@ public sealed record ExportPlan(string Root,string Destination,IReadOnlyList<Exp
 }
 public static class PrivateExport
 {
-    [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool CreateDirectoryW(string path,IntPtr security);
     public static ExportPlan Preview(string root,string destination,bool folder=false)
     {
         root=Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));destination=Path.GetFullPath(destination);
@@ -38,12 +35,12 @@ public static class PrivateExport
     {
         var fresh=Preview(plan.Root,plan.Destination,true);
         if(!fresh.Entries.Select(e=>(e.Relative,e.Bytes)).SequenceEqual(plan.Entries.Select(e=>(e.Relative,e.Bytes))))throw new IOException("Nguồn đã thay đổi; xem trước lại.");
-        if(!CreateDirectoryW(plan.Destination,IntPtr.Zero))throw new Win32Exception(Marshal.GetLastWin32Error());Storage.NoLinks(plan.Destination);
+        SafeFile.CreateDirectoryData(plan.Destination);
         foreach(var item in fresh.Entries)
         {
             stop.ThrowIfCancellationRequested();var target=Path.Combine(plan.Destination,item.Relative.Replace('/',Path.DirectorySeparatorChar));
             Storage.NoLinks(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(target))!);
-            if(item.Directory){Directory.CreateDirectory(target);Storage.NoLinks(target);continue;}
+            if(item.Directory){SafeFile.CreateDirectoryData(Path.TrimEndingDirectorySeparator(target));continue;}
             using var input=SafeFile.ReadData(item.Source);using var output=SafeFile.CreateData(target);input.CopyTo(output);
         }
         // Newly created objects inherit destination permissions; no owner/DACL/EFS metadata is copied.
