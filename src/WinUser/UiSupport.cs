@@ -14,7 +14,7 @@ internal static class Ui
 }
 internal sealed class UiPreferences
 {
-    public int Width {get;set;}=1360;public int Height {get;set;}=880;public int Split {get;set;}=470;
+    public int Width {get;set;}=1360;public int Height {get;set;}=880;public int Split {get;set;}=500;
     public bool Maximized {get;set;}public int Filter {get;set;}public string PrivateRoot {get;set;}="";
     public Dictionary<string,int> Columns {get;set;}=new();
     static string FilePath=>Path.Combine(Storage.Root,"ui-preferences.json");

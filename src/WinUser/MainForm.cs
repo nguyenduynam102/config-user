@@ -144,8 +144,10 @@ public sealed partial class MainForm:Form
         var cancel=new Button(){Text="Hủy",DialogResult=DialogResult.Cancel,AutoSize=true};var ok=new Button(){Text="Xác nhận thực hiện",DialogResult=DialogResult.OK,AutoSize=true};bar.Controls.AddRange(new Control[]{cancel,ok});dialog.Controls.Add(content);dialog.Controls.Add(bar);dialog.AcceptButton=cancel;dialog.CancelButton=cancel;
         return dialog.ShowDialog(this)==DialogResult.OK;
     }
-    async void Batch(string action,Func<LocalUser,string> apply,bool manage=false,string? excludedSid=null)
+    async void Batch(string action,Func<LocalUser,string> apply,bool manage=false,string? excludedSid=null,Action? cleanup=null)
     {
+        try
+        {
         await ExecuteAsync(async()=>
         {
             var chosen=Selected();var skipped=new List<(LocalUser User,string Reason)>();var pending=new List<LocalUser>();
@@ -173,6 +175,8 @@ public sealed partial class MainForm:Form
             if(stopRequested)foreach(var user in pending.Skip(done))AddResult(user.Name,action,"Chưa chạy","Đã dừng trước khi xử lý user này.");
             stop.Enabled=false;await ReloadAsync();status.Text=$"Hoàn tất: {passed} thành công · {failed} lỗi · {pending.Count-done} chưa chạy · {skipped.Count} bỏ qua";showLog.Checked=true;
         });
+        }
+        finally{cleanup?.Invoke();}
     }
     static string ActionId(string action)=>action.Split('\r','\n',':')[0];
     void AddResult(string user,string action,string state,string detail)
@@ -199,7 +203,7 @@ public sealed partial class MainForm:Form
             else foreach(var user in list){using var dialog=new PasswordDialog("Đặt lại mật khẩu",user.Name,true);if(dialog.ShowDialog(this)!=DialogResult.OK)return;passwords[user.Sid]=dialog.Password;}
             // Batch owns a copy; no password is written to previews, logs or preferences.
             var submitted=new Dictionary<string,string>(passwords);
-            Batch("Đặt lại mật khẩu Windows\r\nCó thể ảnh hưởng EFS/chứng chỉ/credential đã lưu; không buộc đổi mật khẩu ở lần đăng nhập sau.",u=>{if(!submitted.Remove(u.Sid,out var password))throw new InvalidOperationException("Thiếu mật khẩu cho user.");WindowsAccounts.ResetPassword(u,password);return "Đã đặt lại mật khẩu.";},true);
+            Batch("Đặt lại mật khẩu Windows\r\nCó thể ảnh hưởng EFS/chứng chỉ/credential đã lưu; không buộc đổi mật khẩu ở lần đăng nhập sau.",u=>{if(!submitted.Remove(u.Sid,out var password))throw new InvalidOperationException("Thiếu mật khẩu cho user.");WindowsAccounts.ResetPassword(u,password);return "Đã đặt lại mật khẩu.";},true,cleanup:submitted.Clear);
         }
         finally{passwords.Clear();}
     }
@@ -218,7 +222,7 @@ public sealed partial class MainForm:Form
             await ReloadAsync();var user=allRows.Select(r=>r.User).Single(u=>u.Name.Equals(name,StringComparison.OrdinalIgnoreCase));Storage.Log("CreateUser",user.Sid,true);targets.Set(user.Sid,true);SyncChecks();
             if(preset!=null){try{await Task.Run(()=>Presets.Apply(preset,user));Storage.Log("ApplyPreset",user.Sid,true);AddResult(name,"Áp dụng bộ cấu hình","Thành công",preset.Name);}catch(Exception e){Storage.Log("ApplyPreset",user.Sid,false,ErrorCode(e));AddResult(name,"Áp dụng bộ cấu hình","Thất bại","User đã tạo; áp dụng bộ chưa hoàn tất: "+e.Message);}await ReloadAsync();}
         });
-    
+
         }
         catch(Exception e){Report(e);}
     }
@@ -268,7 +272,7 @@ public sealed partial class MainForm:Form
         var mapping=new AgentMapping(Policy.Drive(drive.Text),Policy.Unc(unc.Text),nasUser.Text,nasPassword.Text);
         if(!Confirm("Kiểm tra SMB trong phiên Administrator tới "+mapping.Unc+". Có thể tạo kết nối SMB tạm; không chứng minh user đích đã kết nối."))return;
         await ExecuteAsync(async()=>{var code=await Task.Run(()=>Nas.Connect(mapping,true));Append("NAS: "+code+" — "+(code==0?"Kết nối thành công trong phiên Administrator":new Win32Exception(code).Message)+" (85: trùng ổ; 1219: xung đột SMB; 1326: xác thực; 5: quyền).");showLog.Checked=true;});
-    
+
         }
         catch(Exception e){Report(e);}
     }

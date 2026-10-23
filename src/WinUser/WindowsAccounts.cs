@@ -4,7 +4,7 @@ using System.Security.Principal;
 namespace WinUser;
 public record LocalUser(string Name, string Sid, bool Enabled, bool Rdp, bool LockedOut=false, bool RdpDenied=false, bool RdpMember=false)
 {
-    public string AccountStatus=>!Enabled?"Đã vô hiệu hóa":LockedOut?"Khóa do nhập sai":"Đang bật";
+    public string AccountStatus=>!Enabled?(LockedOut?"Vô hiệu hóa + lockout":"Đã vô hiệu hóa"):LockedOut?"Khóa do nhập sai":"Đang bật";
     public string RdpStatus=>RdpDenied?"Đã chặn trực tiếp":RdpMember?"Trong nhóm RDP":"Không trong nhóm";
 }
 public record LocalSession(int Id,string User,string Domain,ushort Protocol,int State);

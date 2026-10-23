@@ -33,6 +33,18 @@ internal static class Program
                 Check("clearing filter restores checked users",()=>{search.Clear();if(grid.Rows.Cast<DataGridViewRow>().Count(r=>r.Cells[0].Value is true)!=chosen)throw new Exception("Checks lost");});
                 Check("source supports searchable dropdown",()=>{if(source.DropDownStyle!=ComboBoxStyle.DropDown||source.AutoCompleteMode!=AutoCompleteMode.SuggestAppend)throw new Exception("Source not searchable");source.SelectedIndex=0;});
                 Check("account actions separated",()=>{var buttons=Find<Button>(form).Select(b=>b.Text).ToArray();foreach(var caption in new[]{"Khóa tài khoản","Ngắt phiên RDP","Đổi mật khẩu","Mở khóa nhập sai"})if(!buttons.Any(t=>t.StartsWith(caption)))throw new Exception("Missing "+caption);});
+                Check("source is excluded from Desktop destination actions",()=>
+                {
+                    var user=(LocalUser)source.SelectedItem!;targets.Clear();targets.Set(user.Sid,true);Invoke(form,"SyncChecks");
+                    if(Find<Button>(form).Single(b=>b.Text.StartsWith("Thêm shortcut (")).Enabled)throw new Exception("Source remains a destination");
+                });
+                Check("current administrator account controls are disabled",()=>
+                {
+                    targets.Clear();targets.Set(WindowsAccounts.CurrentSid,true);Invoke(form,"SyncChecks");
+                    if(Find<Button>(form).Single(b=>b.Text.StartsWith("Khóa tài khoản (")).Enabled)throw new Exception("Current administrator not protected");
+                });
+                var refresh=(Task)form.GetType().GetMethod("ReloadAsync",Private)!.Invoke(form,null)!;await refresh;
+                Check("refresh preserves explicit targets and source SID",()=>{if(!targets.Contains(WindowsAccounts.CurrentSid)||source.SelectedItem is not LocalUser)throw new Exception("Refresh lost selection");});
                 Check("password confirmation buttons visible",()=>
                 {
                     var type=typeof(MainForm).Assembly.GetType("WinUser.PasswordDialog")!;using var dialog=(Form)Activator.CreateInstance(type,"Fixture","No account will be changed",true)!;dialog.Show(form);dialog.PerformLayout();
