@@ -1,2 +1,4 @@
+c4f0dd3bb008a966881a85389fd664fc67294e639fdb62c44a8432de1c10dc37  WinUser-source-preview3.zip
 3a29e6026647bad96ab7cfa1a3b971ad69426f558dcb8e803f5e92a0198ae10b  WinUser-v1.0-preview-win-x64.zip
 c32cad8e7fd6aeca00a6e9efd578100195f62fc5fca57105ff8142faf245eeaa  WinUser-v1.0-preview2-win-x64.zip
+be2d1d146b408c13126fc30d2f7006ea7ff250c6e057e695c3cf8f2a8da1d05d  WinUser-v1.0-preview3-win-x64.zip
