@@ -18,6 +18,18 @@ foreach(var scenario in new[]{1,2})Check("native failure "+scenario+" propagates
 });
 Check("empty enumeration",()=>{mode(3);if(AccountEnumeration.Read().Count!=0)throw new Exception("Expected empty result");});
 Check("repeat enumeration releases native allocations",()=>{mode(0);for(int i=0;i<100;i++)if(AccountEnumeration.Read().Count!=2)throw new Exception("Wrong count");});
+var setFlags=Marshal.GetDelegateForFunctionPointer<SetFlags>(NativeLibrary.GetExport(library,"TestFlags"));
+var lastFlags=Marshal.GetDelegateForFunctionPointer<GetFlags>(NativeLibrary.GetExport(library,"TestLastFlags"));
+var setCode=Marshal.GetDelegateForFunctionPointer<SetMode>(NativeLibrary.GetExport(library,"TestSetCode"));
+var passwordOk=Marshal.GetDelegateForFunctionPointer<Count>(NativeLibrary.GetExport(library,"TestPasswordOk"));
+Check("unlock clears lockout while preserving disabled and unrelated flags",()=>{setFlags(0x10212);AccountUpdates.Flags("alpha",f=>f&~0x10u);if(lastFlags()!=0x10202)throw new Exception("Flags corrupted");});
+Check("enable preserves lockout and unrelated flags",()=>{setFlags(0x10212);AccountUpdates.Flags("alpha",f=>f&~2u);if(lastFlags()!=0x10210)throw new Exception("Flags corrupted");});
+Check("password reset uses USER_INFO_1003 UTF16 pointer",()=>{AccountUpdates.Password("alpha","fixture-only");if(passwordOk()!=1)throw new Exception("Wrong password marshaling");});
+Check("flag update failure frees level-1 buffer",()=>{setCode(5);try{AccountUpdates.Flags("alpha",f=>f);throw new Exception("Expected failure");}catch(Win32Exception e){if(e.NativeErrorCode!=5)throw;}finally{setCode(0);}});
+Check("flag transformation failure frees native buffer",()=>{try{AccountUpdates.Flags("alpha",_=>throw new ArgumentException("fixture"));throw new Exception("Expected failure");}catch(ArgumentException){}});
 Console.WriteLine($"{passed} native-contract checks passed (Linux fixture; Windows runtime NOT tested).");
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]delegate void SetMode(int mode);
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]delegate int Count();
+
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]delegate void SetFlags(uint flags);
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]delegate uint GetFlags();

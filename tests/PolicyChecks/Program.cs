@@ -19,4 +19,14 @@ foreach(var key in new[]{"HKEY_LOCAL_MACHINE\\Software\\Test","-HKEY_CURRENT_USE
 foreach(var value in new[]{"-","hex:00,01","dword:wrong","\"bad\\q\"","\"a\"b\""})Check("reject REG value "+value,()=>Reject(()=>Policy.ParseRegistry(header+"[HKEY_CURRENT_USER\\Software\\Test]\n\"a\"="+value)));
 Check("reject empty REG",()=>Reject(()=>Policy.ParseRegistry(header)));
 Check("reject value without key",()=>Reject(()=>Policy.ParseRegistry(header+"\"a\"=\"b\"")));
+Check("selection resolves hidden targets from complete directory",()=>{var selection=new TargetSelection();selection.Set("sid-a",true);selection.Set("sid-b",true);Equal(2,selection.Resolve(new[]{"sid-a","sid-b","sid-c"},s=>s).Count);Equal(1,selection.Resolve(new[]{"sid-a"},s=>s).Count);Equal(2,selection.Count);});
+Check("selection persists across filtering and clears explicitly",()=>{var selection=new TargetSelection();selection.Set("SID-A",true);Equal(true,selection.Contains("sid-a"));selection.Resolve(Array.Empty<string>(),s=>s);Equal(1,selection.Count);selection.Clear();Equal(0,selection.Count);});
+Check("refresh removes deleted SID but never transfers selection to same name",()=>{var selection=new TargetSelection();selection.Set("old-sid",true);selection.Retain(new[]{"new-sid"});Equal(0,selection.Count);});
+Check("selection idempotent checkbox updates",()=>{var selection=new TargetSelection();selection.Set("sid",true);selection.Set("sid",true);Equal(1,selection.Count);selection.Set("sid",false);Equal(0,selection.Count);});
+Check("current administrator protected",()=>Equal(true,AccountRules.ProtectedReason("S-1-5-21-1001","S-1-5-21-1001")!=null));
+Check("builtin account protected",()=>Equal(true,AccountRules.ProtectedReason("S-1-5-21-500","other")!=null));
+Check("ordinary user manageable",()=>Equal<string?>(null,AccountRules.ProtectedReason("S-1-5-21-1500","other")));
+Check("password confirmation mismatch rejected",()=>Reject(()=>AccountRules.Password("fixture-only","other")));
+Check("empty reset password rejected",()=>Reject(()=>AccountRules.Password(" "," ")));
+Check("matching nonempty reset password accepted",()=>AccountRules.Password("fixture-only","fixture-only"));
 Console.WriteLine($"{passed} checks passed; exit={Environment.ExitCode}");
