@@ -17,7 +17,6 @@ public sealed partial class MainForm:Form
         Text="WinUser RDP Manager v1.0 Preview 2.2 — Giao diện bản 2";Width=1380;Height=850;MinimumSize=new Size(1000,650);StartPosition=FormStartPosition.CenterScreen;
         users.Columns.Add(new DataGridViewCheckBoxColumn(){Name="Selected",HeaderText="Chọn",Width=48});
         users.Columns.Add(new DataGridViewTextBoxColumn(){DataPropertyName="Name",HeaderText="User",ReadOnly=true,Width=140});
-        users.Columns.Add(new DataGridViewCheckBoxColumn(){DataPropertyName="Enabled",HeaderText="Bật",ReadOnly=true,Width=45});
         users.Columns.Add(new DataGridViewTextBoxColumn(){DataPropertyName="RdpStatus",HeaderText="Trạng thái RDP",ReadOnly=true,Width=130});
         var split=new SplitContainer(){Dock=DockStyle.Fill,Size=new Size(1200,600),SplitterDistance=460,FixedPanel=FixedPanel.Panel1};
         var left=new Panel(){Dock=DockStyle.Fill};var select=Bar();select.Controls.Add(Button("Chọn tất cả",()=>{foreach(DataGridViewRow r in users.Rows){r.Cells[0].Value=true;r.Selected=true;}UpdateSelectionCount();}));select.Controls.Add(Button("Bỏ chọn",()=>{foreach(DataGridViewRow r in users.Rows)r.Cells[0].Value=false;users.ClearSelection();UpdateSelectionCount();}));select.Controls.Add(Button("Làm mới",RefreshUsers));left.Controls.Add(users);left.Controls.Add(select);BuildUserSelection(left);split.Panel1.Controls.Add(left);

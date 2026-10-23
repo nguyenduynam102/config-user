@@ -13,7 +13,9 @@ public sealed partial class MainForm
         users.Columns.Add(new DataGridViewTextBoxColumn(){DataPropertyName="SessionStatus",HeaderText="Phiên hiện tại",ReadOnly=true,Width=160});
         userFilter.Items.AddRange(new object[]{"Tất cả","Đang bật","Đã khóa","Mở RDP","Có phiên"});userFilter.SelectedIndex=0;
         selectionMode.Items.AddRange(new object[]{"Chọn bằng click / Ctrl / Shift / bôi đen","Chọn bằng ô tick"});selectionMode.SelectedIndex=0;
-        var panel=Bar();panel.Controls.AddRange(new Control[]{selectionCount,userSearch,userFilter,selectionMode});left.Controls.Add(panel);
+        users.AutoSizeColumnsMode=DataGridViewAutoSizeColumnsMode.Fill;
+        foreach(DataGridViewColumn column in users.Columns){column.MinimumWidth=column.Name=="Selected"?45:80;column.FillWeight=column.Name=="Selected"?45:110;}
+        var panel=Bar();panel.Controls.AddRange(new Control[]{selectionCount,new Label(){Text="Tìm tên / SID:",AutoSize=true},userSearch,userFilter,selectionMode});left.Controls.Add(panel);
         userSearch.TextChanged+=(_,_)=>FilterUsers();userFilter.SelectedIndexChanged+=(_,_)=>FilterUsers();
         selectionMode.SelectedIndexChanged+=(_,_)=>{users.ClearSelection();foreach(DataGridViewRow row in users.Rows)row.Cells[0].Value=false;UpdateSelectionCount();};
         users.SelectionChanged+=(_,_)=>UpdateSelectionCount();users.CurrentCellDirtyStateChanged+=(_,_)=>{if(users.IsCurrentCellDirty)users.CommitEdit(DataGridViewDataErrorContexts.Commit);};
