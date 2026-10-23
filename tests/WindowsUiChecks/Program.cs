@@ -51,6 +51,22 @@ internal static class Program
                     var button=Find<Button>(dialog).Single(b=>b.Text=="Tiếp tục");var rect=new Rectangle(dialog.PointToClient(button.PointToScreen(Point.Empty)),button.Size);
                     if(!button.Visible||!dialog.ClientRectangle.Contains(rect))throw new Exception("Password dialog action clipped");dialog.Close();
                 });
+                Check("native guarded file read copy delete within disposable fixture only",()=>
+                {
+                    var folder=Path.Combine(Storage.Root,"UiFixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
+                    try
+                    {
+                        var file=Path.Combine(folder,"source.txt");var copy=Path.Combine(folder,"copy.txt");File.WriteAllText(file,"fixture-only");
+                        var type=typeof(MainForm).Assembly.GetType("WinUser.SafeFile")!;
+                        var text=(string)type.GetMethod("ReadText",BindingFlags.Public|BindingFlags.Static)!.Invoke(null,new object[]{file,65536})!;
+                        if(text!="fixture-only")throw new Exception("Wrong file data");
+                        type.GetMethod("Copy",BindingFlags.Public|BindingFlags.Static)!.Invoke(null,new object[]{file,copy,false});
+                        if(File.ReadAllText(copy)!="fixture-only")throw new Exception("Copy failed");
+                        type.GetMethod("Delete",BindingFlags.Public|BindingFlags.Static)!.Invoke(null,new object[]{copy});
+                        if(File.Exists(copy))throw new Exception("Delete failed");
+                    }
+                    finally{Directory.Delete(folder,true);}
+                });
                 foreach(var width in new[]{1180,1360})
                 {
                     form.Size=new Size(width,Math.Min(850,Screen.PrimaryScreen!.WorkingArea.Height));form.PerformLayout();await Task.Delay(100);

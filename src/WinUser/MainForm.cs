@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using Microsoft.Win32;
+using System.Text.Json;
 namespace WinUser;
 public sealed partial class MainForm:Form
 {
@@ -26,7 +27,7 @@ public sealed partial class MainForm:Form
     {
         public required LocalUser User {get;init;}public bool Chosen{get;set;}public string Name=>User.Name;
         public string Account=>User.AccountStatus;public string Rdp=>User.RdpStatus;public string Session{get;init;}="Không có phiên";
-        public bool HasRdp{get;init;}public string Profile{get;init;}="Chưa có profile";public string Nas{get;init;}="Chưa cấu hình";
+        public bool HasRdp{get;init;}public string Profile{get;init;}="Chưa có profile";public string Nas{get;init;}="Chưa cấu hình";public string NasAgent{get;init;}="Chưa có báo cáo Agent";
     }
     sealed record Snapshot(List<UserView> Users,List<NasMapping> Nas,bool SessionsKnown,string[] Warnings);
     public MainForm()
@@ -65,7 +66,7 @@ public sealed partial class MainForm:Form
             string profile="Chưa có profile";
             try{using var key=Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\"+u.Sid);if(key?.GetValue("ProfileImagePath") is string p)profile=Environment.ExpandEnvironmentVariables(p);}catch{profile="Không đọc được profile";}
             var userMappings=mappings.Where(m=>m.Sid==u.Sid).Select(m=>m.Drive+" → "+m.Unc).ToArray();
-            rows.Add(new(){User=u,Session=state,HasRdp=rdp.Count>0,Profile=profile,Nas=userMappings.Length==0?"Chưa cấu hình":string.Join(Environment.NewLine,userMappings)});
+            rows.Add(new(){User=u,Session=state,HasRdp=rdp.Count>0,Profile=profile,NasAgent=ReadAgentReport(profile),Nas=userMappings.Length==0?"Chưa cấu hình":string.Join(Environment.NewLine,userMappings)});
         }
         return new(rows,mappings,known,warnings.ToArray());
     }
@@ -134,7 +135,7 @@ public sealed partial class MainForm:Form
         if(row==null){detailTitle.Text="Chi tiết tài khoản";detailText.Text="Click tên một user để xem thông tin.\r\nUser được tick mới là đối tượng của các thao tác.";return;}
         inspectedSid=row.User.Sid;var protectedReason=AccountRules.ProtectedReason(row.User.Sid,WindowsAccounts.CurrentSid);
         detailTitle.Text=row.Name+(protectedReason!=null?" · được bảo vệ":"");
-        detailText.Text="Tài khoản: "+row.Account+"\r\nCấu hình RDP: "+row.Rdp+"\r\nPhiên: "+row.Session+"\r\nSID: "+row.User.Sid+"\r\nProfile: "+row.Profile+"\r\nNAS: "+row.Nas+(protectedReason==null?"":"\r\nBảo vệ: "+protectedReason)+"\r\n\r\nTrạng thái nhóm/deny trực tiếp chưa phản ánh đầy đủ chính sách RDP hiệu lực.";
+        detailText.Text="Tài khoản: "+row.Account+"\r\nCấu hình RDP: "+row.Rdp+"\r\nPhiên: "+row.Session+"\r\nSID: "+row.User.Sid+"\r\nProfile: "+row.Profile+"\r\nNAS: "+row.Nas+"\r\nAgent NAS: "+row.NasAgent+(protectedReason==null?"":"\r\nBảo vệ: "+protectedReason)+"\r\n\r\nTrạng thái nhóm/deny trực tiếp chưa phản ánh đầy đủ chính sách RDP hiệu lực.";
     }
     bool Confirm(string text)
     {
@@ -261,7 +262,27 @@ public sealed partial class MainForm:Form
     void RefreshPresets(){var id=(presetList.SelectedItem as Preset)?.Id;var list=Presets.List();presetList.DataSource=list;presetList.SelectedItem=list.FirstOrDefault(p=>p.Id==id)??list.FirstOrDefault();}
     void CreatePreset(){var n=Prompt("Tên bộ cấu hình");if(n==null)return;LocalUser? from=string.IsNullOrWhiteSpace(source.Text)?null:Source();if(Names().Length>0&&shortcutSourceSid!=from?.Sid)throw new ArgumentException("Đọc lại Desktop nguồn.");Presets.Create(n,from,Names(),string.IsNullOrWhiteSpace(regFile.Text)?null:regFile.Text,string.IsNullOrWhiteSpace(privateRoot.Text)?null:privateRoot.Text,presetRdp.Checked);RefreshPresets();Append("Đã lưu bộ cấu hình.");}
     static string PresetPreview(Preset p)=>"Bộ: "+p.Name+"\r\nCho phép RDP: "+p.Rdp+"\r\nShortcut: "+string.Join(", ",p.Shortcuts)+"\r\nRegistry: "+p.HasRegistry+"\r\nThư mục gốc: "+p.PrivateRoot+"\r\nNAS: "+string.Join(", ",p.Nas.Select(m=>m.Drive+" → "+m.Unc));
-    void ShowNas(){nasInfo.Text=string.Join(Environment.NewLine,nasMappings.Select(m=>allRows.FirstOrDefault(r=>r.User.Sid==m.Sid)?.Name+" | "+m.Drive+" → "+m.Unc+" | NAS user: "+m.User))+"\r\n\r\nTrạng thái kết nối thực tế cần xác nhận trong phiên user đích; cấu hình đã lưu không đồng nghĩa đã kết nối.";}
+    static string ReadAgentReport(string profile)
+    {
+        if(!Path.IsPathFullyQualified(profile))return "Chưa có profile/báo cáo Agent";
+        var file=Path.Combine(profile,"AppData","Local","WinUser","nas-status.json");if(!File.Exists(file))return "Chưa có báo cáo Agent";
+        try
+        {
+            using var json=JsonDocument.Parse(SafeFile.ReadText(file));var root=json.RootElement;
+            var time=root.GetProperty("utc").GetDateTime().ToUniversalTime();var broker=root.GetProperty("broker").GetBoolean();var age=DateTime.UtcNow-time;
+            var stale=age>TimeSpan.FromMinutes(2)||age<TimeSpan.FromMinutes(-5);var states=new List<string>();
+            foreach(var item in root.GetProperty("results").EnumerateArray())
+            {
+                var letter=Policy.Drive(item.GetProperty("drive").GetString()??"");var code=item.GetProperty("code").GetInt32();states.Add(letter+" "+(code==0?"đã ánh xạ / đã có":code==2401?"chờ ngắt mapping cũ":"lỗi "+code));
+            }
+            return time.ToLocalTime().ToString("g")+(stale?" · báo cáo cũ/sai thời gian":"")+" · Broker "+(broker?"kết nối":"chưa kết nối")+" · "+string.Join(", ",states)+" (báo cáo do user ghi, chưa xác thực)";
+        }
+        catch{return "Không đọc được báo cáo Agent hoặc dữ liệu không hợp lệ";}
+    }
+    void ShowNas()
+    {
+        nasInfo.Text="CẤU HÌNH ĐÃ LƯU\r\n"+string.Join(Environment.NewLine,nasMappings.Select(m=>allRows.FirstOrDefault(r=>r.User.Sid==m.Sid)?.Name+" | "+m.Drive+" → "+m.Unc+" | NAS user: "+m.User))+"\r\n\r\nBÁO CÁO AGENT (F5 để làm mới)\r\n"+string.Join(Environment.NewLine,allRows.Select(r=>r.Name+": "+r.NasAgent))+"\r\n\r\nTrạng thái thực tế cần xác nhận trong phiên user đích; cấu hình và báo cáo Agent không phải bằng chứng quyền truy cập NAS.";
+    }
     void SaveNas(){var d=drive.Text;var path=unc.Text;var login=nasUser.Text;var secret=nasPassword.Text;Policy.Drive(d);Policy.Unc(path);Batch("Lưu ánh xạ NAS\r\n"+d+" → "+path,u=>{Nas.Save(u,d,path,login,secret);return "Đã lưu cấu hình; chờ Agent trong phiên user áp dụng.";});nasPassword.Clear();}
     void RemoveNas(){var d=drive.Text;Policy.Drive(d);Batch("Xóa cấu hình ánh xạ NAS\r\nỔ: "+d,u=>{Nas.Remove(u,d);return "Đã xóa cấu hình; Agent sẽ thử ngắt mapping, không ép đóng tệp.";});}
     async void TestNas()

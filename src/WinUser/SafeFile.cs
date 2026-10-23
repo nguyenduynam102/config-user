@@ -30,6 +30,12 @@ internal static class SafeFile
         }
         finally{Marshal.FreeHGlobal(up);Marshal.FreeHGlobal(buffer);}
     }
+    public static string ReadText(string path,int maximumBytes=65536)
+    {
+        using var stream=new FileStream(Open(path,0x80000000,false),FileAccess.Read);
+        if(stream.Length>maximumBytes)throw new IOException("Báo cáo vượt giới hạn kích thước.");
+        using var reader=new StreamReader(stream);return reader.ReadToEnd();
+    }
     public static void Copy(string source,string dest,bool overwrite=false)
     {
         using var input=new FileStream(Open(source,0x80000000,false),FileAccess.Read);
