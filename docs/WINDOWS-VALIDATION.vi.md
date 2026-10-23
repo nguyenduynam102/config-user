@@ -67,3 +67,15 @@ Không đánh dấu các dòng trên đã đạt khi chỉ chạy kiểm tra par
 7. Batch nhiều user: giao diện không treo, dừng chỉ bỏ các user chưa chạy; kết quả phân biệt thành công/lỗi/bỏ qua/chưa chạy. Đóng cửa sổ khi đang làm phải chờ bước hiện tại, không cắt ngang.
 8. Kiểm tra RDP không thay firewall/Registry. Rule allow tìm thấy không được coi là chứng minh truy cập hiệu lực khi có block/GPO/NLA/network issue.
 9. Khởi động lại app: nhớ cửa sổ/cột/bộ lọc, không tự chọn user hoặc nạp lại mật khẩu cũ.
+
+## Preview 2.1 — rollback và phạm vi thử mới
+
+Theo yêu cầu người dùng, khôi phục giao diện và API quản lý user của tag v1.0.0-preview.2. Các kiểm tra UI Preview 3 không được coi là bằng chứng của phiên bản 2.1. Chương trình test Windows được đổi theo giao diện 2.1 và có fixture SMB/ACL riêng.
+
+Fixture chỉ chạy khi GITHUB_ACTIONS=true trên máy GitHub-hosted dùng một lần. Tạo user A/B/NAS ngẫu nhiên bằng NetAPI, mật khẩu ngẫu nhiên chỉ giữ trong bộ nhớ, share SMB local riêng, cài EXE Broker thật từ gói publish, chạy Agent bằng token user không phải admin và dọn fixture. Không chạy fixture này trên PC sử dụng thật.
+
+Các ca: ZIP metadata không mang ACL, dữ liệu >16 MiB, không ghi đè/không xuất vào trong nguồn; user B không đọc được đường dẫn dữ liệu private của A nhưng đọc được tệp đã giải nén ngoài; password NAS được mã hóa; thêm trùng ổ bị từ chối; sửa không nhập lại password khi cùng server/account; Broker impersonation sau HELLO; A nhận Y/Z, B chỉ X; đọc/ghi thực qua ổ SMB; xung đột ký tự ổ; xóa config không xóa dữ liệu NAS.
+
+Vẫn cần kiểm thử Windows 10 Pro/TrueNAS thực: UAC và bộ cài từ Explorer, user đã RDP khi cài/lưu cấu hình, tự khởi chạy Agent qua WTS token, lần đăng nhập đầu, NAS mất mạng/đổi mật khẩu, SMB credential cache 1219, file đang mở khi xóa mapping, EFS/DRM. Không khẳng định các ca này đã đạt nếu chỉ fixture Windows Server đạt.
+
+Bằng chứng Preview 2.1: https://github.com/nguyenduynam102/config-user/actions/runs/40006966854 — success, source d564e780eebbc93c8fc5395f4226c1b6d23c6b17. 39 input checks, 5 Windows UI checks và 9 integration checks thực thi. Hai tài khoản không phải admin đã chạy Agent thật, gọi Broker service thật và đọc/ghi qua Y/Z hoặc X. User B bị AccessDenied với file private của A nhưng đọc được file đã xuất/giải nén. File 17 MiB đã xuất đầy đủ. Linux chạy thêm 5 native-contract checks cho NetUserEnum. Các ca lỗi của bộ cài và fixture process handle được sửa rồi chạy lại toàn bộ; không tính các lần lỗi là pass.

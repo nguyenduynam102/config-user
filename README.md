@@ -7,23 +7,34 @@
 
 ## Tải chương trình
 
-- [Tải WinUser cho Windows x64 (ZIP chứa EXE và bộ cài)](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview3-win-x64.zip)
-- [Xem bản phát hành và tải mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.3)
+- [Tải WinUser cho Windows x64 (ZIP chứa EXE và bộ cài)](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview2.1-win-x64.zip)
+- [Xem bản phát hành và tải mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.2.1)
 
 Giải nén ZIP trước khi chạy. Đây là **bản thử nghiệm, chưa kiểm thử thực tế trên Windows/TrueNAS**. Không dùng trên dữ liệu sản xuất trước khi hoàn thành các ca kiểm thử trong tài liệu.
 
-## Preview 3 — giao diện quản trị mới
+## Preview 2.1 — trở lại giao diện bản 2, sửa NAS và bổ sung chia sẻ dữ liệu
 
-- Biểu tượng kèm chữ, nhóm **Tài khoản / Quyền RDP / Phiên**, phông Segoe UI và hỗ trợ DPI PerMonitorV2.
-- Danh sách tìm kiếm Ctrl+F, bộ lọc, sắp xếp cột; click tên chỉ xem chi tiết. Tick checkbox để chọn user đích; Ctrl/Shift + click bôi đen rồi Enter/Space hoặc nút Chọn dòng bôi đen để tick hàng loạt. Lựa chọn được giữ khi chuyển tab, lọc hoặc làm mới. User bị ẩn do lọc vẫn là đích, có cảnh báo số lượng và xác nhận danh sách đầy đủ.
-- Nguồn Desktop là danh sách xổ xuống có tìm kiếm; nút Lấy user đang xem và menu chuột phải giúp chọn nhanh. Nguồn được loại khỏi các đích Desktop. Thay nguồn phải đọc lại shortcut.
-- Đổi mật khẩu riêng từng user (mặc định) hoặc chung; nhập xác nhận, hiện/ẩn tùy chọn, cảnh báo EFS/chứng chỉ/credential. Không tự buộc đổi mật khẩu ở lần đăng nhập sau; không ghi mật khẩu vào log/cấu hình.
-- Khóa tài khoản vẫn vô hiệu hóa + ngắt RDP không logoff. Nút **Ngắt phiên RDP** độc lập không khóa user. **Bật tài khoản** khác **Mở khóa nhập sai**; thao tác sau chỉ xóa lockout, giữ nguyên cờ vô hiệu hóa và quyền RDP.
-- Tác vụ nhiều user chạy nền, báo tiến độ và kết quả từng user. Dừng chỉ bỏ các user chưa chạy, không hủy ngược bước đã thực hiện. Tài khoản đang quản trị và RID Windows tích hợp được bảo vệ; xem trước các user bị bỏ qua.
-- Chi tiết user gồm SID, profile đã tồn tại, trạng thái tài khoản, nhóm/deny RDP trực tiếp, phiên và cấu hình NAS. Chỉ xem chi tiết không tạo profile hoặc đổi quyền.
-- Kiểm tra RDP chỉ đọc: trạng thái bật máy, dịch vụ, NLA, cổng và rule firewall cơ bản. Không tự bật RDP/firewall, không kết luận quyền hiệu lực đầy đủ.
-- Nhớ kích thước cửa sổ/cột, bộ lọc và thư mục gốc; không nhớ mật khẩu, user đích hoặc nguồn giữa hai lần mở. F5 làm mới; mục Trợ giúp mở trang cập nhật chính thức.
-- Kiểm chứng: 49 kiểm tra logic, 10 kiểm tra native-contract trên Linux; workflow Windows UI checks thực thi kiểm tra chỉ đọc trên Windows Server GitHub-hosted. Xem kết quả CI và tài liệu Windows; không thay thế nghiệm thu Windows 10 Pro/RDP/TrueNAS thật.
+Giao diện User/RDP/Desktop/Registry/bộ cấu hình trở về Preview 2. Không giữ giao diện chọn/lọc/progress hoặc các chức năng quản lý tài khoản mới của Preview 3. Dữ liệu cấu hình NAS, bộ cấu hình và bản sao lưu cũ vẫn dùng cùng định dạng; không tự xóa hoặc reset dữ liệu.
+
+### Thư mục riêng và chia sẻ ra ngoài
+
+- Giữ ACL riêng tư cho cả cây dữ liệu khi còn bên trong: user, Administrators, SYSTEM. Chỉ khóa thư mục gốc nhưng cho Everyone đọc tệp con có thể làm lộ tệp qua đường dẫn biết trước vì Windows thường bỏ qua kiểm tra traverse; không dùng cách này.
+- Copy file thông thường sang nơi khác thường nhận ACL của nơi nhận. Di chuyển trên cùng ổ NTFS hoặc công cụ bảo toàn quyền có thể giữ ACL cũ; ứng dụng không theo dõi mọi thao tác Explorer bên ngoài.
+- Tab Thư mục riêng có **Xuất ZIP chia sẻ**: chọn thư mục/tệp con qua thư mục nguồn, chọn ZIP bên ngoài nguồn, xem số tệp/dung lượng và xác nhận. Xuất toàn bộ dữ liệu trong thư mục được chọn, không chỉ shortcut. Không thay đổi ACL hoặc xóa dữ liệu gốc.
+- ZIP không mang ACL/owner NTFS của nguồn. Khi gửi qua email/USB hoặc giải nén ở nơi nhận, quyền truy cập do thư mục/nơi nhận quyết định. ZIP lưu trong thư mục Administrator riêng vẫn có thể không đọc được bởi user khác: hãy gửi ZIP hoặc đặt tại nơi người nhận có quyền đọc.
+- Không ghi đè ZIP có sẵn; không đi theo symlink/junction/hardlink; từ chối EFS. Nếu lỗi giữa chừng, ZIP dở dang có thể còn lại, không gửi tệp này. Mật khẩu tài liệu/DRM không bị gỡ bỏ. Xuất ZIP chưa hỗ trợ đích UNC: xuất ra ổ local rồi gửi.
+
+### NAS: thêm/sửa/xóa rõ ràng
+
+1. Giải nén bản 2.1, đóng các tiến trình WinUser/Agent cũ rồi chạy **Install.cmd → Run as administrator**. Bộ cài dùng module đúng Windows PowerShell 5.1, chép EXE vào Program Files và đăng ký Broker/Agent. Nếu đang dùng bản NAS cũ, chỉ chạy EXE mới ngoài Downloads chưa cập nhật dịch vụ.
+2. Mở WinUser, tick user Windows đích bên trái, vào NAS → **Thêm ánh xạ**. Chọn ký tự ổ, nhập UNC, NAS user/password. Có thể tạo nhiều mapping cho mỗi SID. Thêm trùng ổ sẽ báo lỗi, không âm thầm ghi đè.
+3. Bảng NAS hiển thị từng user Windows/ổ/UNC/NAS user. Chọn một dòng rồi **Sửa ánh xạ** hoặc **Xóa ánh xạ đã chọn**. Mật khẩu cũ không hiển thị. Khi sửa cùng máy chủ/tài khoản, để trống mật khẩu để giữ lại; đổi máy chủ/tài khoản cần mật khẩu mới.
+4. **Kiểm tra hệ thống NAS** phân biệt dịch vụ chưa cài/đang dừng, Run Agent và phiên bản EXE đã cài. Phải cập nhật bộ cài Preview 2.1 nếu đang còn Broker/Agent 2 hoặc 3.
+5. Sửa handshake: Agent gửi gói HELLO cố định, Broker đọc xong mới impersonate để lấy SID thật. Không nhận SID do client tự khai. Agent vẫn xác minh PID dịch vụ trước khi tin pipe.
+6. Broker LocalSystem có bộ khởi chạy Agent bằng token của phiên user đang hoạt động, kiểm tra mỗi 15 giây; không truyền password bằng dòng lệnh và không chạy Agent dưới SYSTEM. Khóa singleton giữ một Agent mỗi phiên. HKLM Run vẫn hỗ trợ lần đăng nhập sau. Khả năng khởi chạy phiên đang RDP phải được nghiệm thu trên Windows 10 Pro thật.
+7. **Kiểm tra SMB** dùng thông tin của dòng đã chọn trong phiên Administrator, không chứng minh ổ đã hiện trong phiên user. Agent chạy trong phiên user mới tạo ổ đĩa nhìn thấy bởi Explorer của user đó. Kết nối lỗi sẽ thử lại mỗi 30 giây.
+
+Kiểm thử tích hợp sử dụng VM Windows GitHub-hosted dùng một lần, user/share SMB riêng và xóa fixture sau khi chạy. Điều này không thay thế NAS TrueNAS thật. Bằng chứng: [CI Windows thành công](https://github.com/nguyenduynam102/config-user/actions/runs/40006966854). Đạt 5 kiểm tra UI và 9 kiểm tra tích hợp SMB/ACL/ZIP; xem VALIDATION.json. TrueNAS và tự chạy Agent trong phiên RDP Windows 10 vẫn cần nghiệm thu riêng.
 
 ## Bản Preview 2 — sửa lỗi tải danh sách user
 
@@ -42,13 +53,13 @@ Máy Linux cloud: chạy `bash scripts/cloud-setup.sh` để cài công cụ tro
 
 ## Sử dụng
 
-- Checkbox bên trái chọn user đích; click tên để xem chi tiết. Bôi đen bằng Ctrl/Shift rồi Enter/Space để chọn hàng loạt. Thanh xanh luôn hiện user đích, kể cả user bị ẩn do bộ lọc. Chuyển tab không mất lựa chọn; mở lại app bắt đầu với danh sách đích trống. Thao tác thay đổi có xem trước/xác nhận; xem kết quả từng user ở thanh dưới. Một thao tác nhiều bước có thể thành công một phần.
+- Checkbox bên trái chọn nhiều user. Thao tác thay đổi hiển thị user đích và yêu cầu xác nhận. Kiểm tra kết quả riêng từng user trong khung dưới; một thao tác nhiều bước có thể thành công một phần.
 - **User/RDP:** tạo user thường có mật khẩu theo chính sách máy; không cấp Administrator. Khóa bằng cờ disabled rồi ngắt các phiên RDP local bằng WTSDisconnectSession, không logoff. Không tắt hoặc đổi RDP của SID đang chạy giao diện và các tài khoản tích hợp. Tắt RDP gán `SeDenyRemoteInteractiveLogonRight` theo SID, gỡ nhóm Remote Desktop Users; bật làm ngược lại. Domain GPO và quyền deny từ nhóm vẫn có thể ngăn đăng nhập. Cột nhóm RDP chỉ phản ánh thành viên trực tiếp cùng deny trực tiếp, không tính đầy đủ chính sách hiệu lực.
-- **Desktop:** chọn nguồn, đọc danh sách, chọn shortcut rồi xem trước/thêm/xóa cho user đích. Chỉ `.lnk/.url`, không Public Desktop, không ghi đè bản trùng. Biểu tượng phân biệt shortcut file và URL; không tự truy xuất biểu tượng từ đích mạng. Lưới chỉ là danh sách xem trước, **chưa hiển thị đúng tọa độ Desktop thật**. Cảnh báo đích `.lnk` không tồn tại không chặn sao chép. Desktop chuyển hướng ngoài profile chưa hỗ trợ. Dùng CreateProfile để chuẩn bị profile mới khi Windows cho phép.
+- **Desktop:** chọn nguồn, đọc danh sách, chọn shortcut rồi xem trước/thêm/xóa cho user đích. Chỉ `.lnk/.url`, không Public Desktop, không ghi đè bản trùng. Icon được đọc từ liên kết; lưới chỉ là danh sách xem trước, **chưa hiển thị đúng tọa độ Desktop thật**. Cảnh báo đích `.lnk` không tồn tại không chặn sao chép. Desktop chuyển hướng ngoài profile chưa hỗ trợ. Dùng CreateProfile để chuẩn bị profile mới khi Windows cho phép.
 - **Registry:** kiểm tra toàn bộ file trước khi ghi. Chỉ REG Version 5.00, `HKCU\Software`, kiểu REG_SZ/REG_DWORD. Không nhận HKLM/HKCR, xóa khóa/giá trị, hex, multiline, Run/RunOnce/Policies/Classes/Winlogon. Đây là phạm vi hỗ trợ có chủ ý; các file khác cần được đánh giá và bổ sung sau. Mount hive bằng SID khi chưa được Windows nạp; không sửa HKCU của Administrator. Hive đang bận/profile roaming có thể gây lỗi và được báo.
 - **Thư mục riêng:** tạo thư mục mới trên NTFS, owner=user, quyền Full Control cho SID user/Administrators/SYSTEM, bỏ kế thừa. Không tự sửa ACL thư mục đã tồn tại, không xóa dữ liệu. Không thể ẩn tên thư mục bằng ACL trên Explorer cục bộ; dùng Access-Based Enumeration của SMB nếu cần ẩn khi duyệt share. ACL TrueNAS phải do quản trị viên NAS quản lý.
 - **Bộ cấu hình:** lưu các lựa chọn hiện tại cùng NAS của user nguồn; đặt tên, sao chép, đổi tên/xóa có sao lưu. Nút Chỉnh sửa cho phép thay tên, RDP, thư mục gốc, Registry, thêm/bỏ shortcut và sửa/thêm/bỏ NAS cùng mật khẩu; không hiển thị mật khẩu cũ. Xem trước rồi lưu bộ, chưa áp dụng lên user. Chọn áp dụng bộ lúc tạo user hoặc áp dụng cho user tồn tại. Tạo user thành công nhưng áp dụng bộ lỗi sẽ giữ user và báo phần chưa hoàn tất.
-- **NAS:** nhập ổ/UNC/tài khoản NAS/mật khẩu và lưu cho các SID đã chọn. Nhiều user có thể dùng cùng tài khoản NAS; mỗi SID có danh sách ánh xạ riêng. Agent ánh xạ trong phiên không nâng quyền của user bằng WNetAddConnection2; ổ của giao diện Administrator không phải ổ của user. Kiểm tra kết nối trên giao diện chỉ thử trong phiên Administrator. Mã 85: trùng ổ; 1219: xung đột credential cùng máy chủ; 1326: xác thực; 5: quyền; 2401: đang chờ ngắt kết nối cũ. Không tự sửa NAS ACL hoặc dùng tài khoản admin NAS.
+- **NAS:** tick user đích, dùng Thêm ánh xạ để nhập ổ/UNC/tài khoản NAS/mật khẩu. Chọn dòng bảng để Sửa hoặc Xóa. Nhiều user có thể dùng cùng tài khoản NAS; mỗi SID có danh sách ánh xạ riêng. Agent ánh xạ trong phiên không nâng quyền của user bằng WNetAddConnection2; ổ của giao diện Administrator không phải ổ của user. Kiểm tra kết nối trên giao diện chỉ thử trong phiên Administrator. Mã 85: trùng ổ; 1219: xung đột credential cùng máy chủ; 1326: xác thực; 5: quyền; 2401: đang chờ ngắt kết nối cũ. Không tự sửa NAS ACL hoặc dùng tài khoản admin NAS.
 - **Sao lưu/khôi phục:** tại `%ProgramData%\WinUser\Backups`. Chọn một thư mục chứa `desktop.json`, `registry.json`, `nas.json` hoặc `preset.json`. Sao lưu trước import/copy/delete/đổi cấu hình và trước khôi phục. Shortcut trùng khi thêm được giữ nguyên. Khôi phục có thể ghi đè thay đổi phát sinh sau sao lưu, cần xem kỹ trước xác nhận. Không có khôi phục toàn hệ thống, mật khẩu Windows hoặc dữ liệu NAS.
 
 ## Bảo mật và vận hành
