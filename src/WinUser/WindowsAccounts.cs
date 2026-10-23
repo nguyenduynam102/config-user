@@ -2,20 +2,17 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 namespace WinUser;
-public record LocalUser(string Name, string Sid, bool Enabled, bool Rdp, bool LockedOut=false, bool RdpDenied=false, bool RdpMember=false)
-{
-    public string AccountStatus=>!Enabled?(LockedOut?"Vô hiệu hóa + lockout":"Đã vô hiệu hóa"):LockedOut?"Khóa do nhập sai":"Đang bật";
-    public string RdpStatus=>RdpDenied?"Đã chặn trực tiếp":RdpMember?"Trong nhóm RDP":"Không trong nhóm";
-}
-public record LocalSession(int Id,string User,string Domain,ushort Protocol,int State);
+public record LocalUser(string Name, string Sid, bool Enabled, bool Rdp);
 public static class WindowsAccounts
 {
     const uint Disabled = 2;
     [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] struct User1 { public string Name, Password; public uint PasswordAge, Privilege; public string? Home, Comment; public uint Flags; public string? Script; }
+    [StructLayout(LayoutKind.Sequential)] struct FlagsInfo { public uint Flags; }
     [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] struct Member { public string Name; }
     [StructLayout(LayoutKind.Sequential)] struct Session { public int Id; public IntPtr Station; public int State; }
     [DllImport("Netapi32.dll")] static extern int NetApiBufferFree(IntPtr buffer);
     [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetUserAdd(string? server, int level, ref User1 info, out int error);
+    [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetUserSetInfo(string? server, string name, int level, ref FlagsInfo info, out int error);
     [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetLocalGroupAddMembers(string? server, string group, int level, ref Member member, int count);
     [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetLocalGroupDelMembers(string? server, string group, int level, ref Member member, int count);
     [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetLocalGroupGetMembers(string? server, string group, int level, out IntPtr buffer, int max, out int count, out int total, ref nuint resume);
@@ -40,8 +37,7 @@ public static class WindowsAccounts
         foreach(var u in AccountEnumeration.Read())
         {
             var sid=new SecurityIdentifier(u.Sid,0).Value;
-            var denied=RdpRights.Denied(sid);
-            result.Add(new(u.Name,sid,(u.Flags & Disabled)==0,members.Contains(sid) && !denied,(u.Flags & 0x10)!=0,denied,members.Contains(sid)));
+            result.Add(new(u.Name,sid,(u.Flags & Disabled)==0,members.Contains(sid) && !RdpRights.Denied(sid)));
         }
         return result.OrderBy(u=>u.Name).ToList();
     }
@@ -57,21 +53,17 @@ public static class WindowsAccounts
     {
         user=Fresh(user);
         Protect(user);
-        AccountUpdates.Flags(user.Name,flags=>enabled?flags & ~Disabled:flags | Disabled);
+        // Read level 1 to preserve all existing account flags.
+        Check(NetUserGetInfo(null,user.Name,1,out var p));
+        try { var old=Marshal.PtrToStructure<User1>(p); var flags=new FlagsInfo { Flags=enabled ? old.Flags & ~Disabled : old.Flags | Disabled }; Check(NetUserSetInfo(null,user.Name,1008,ref flags,out _)); }
+        finally { NetApiBufferFree(p); }
         if (!enabled) Disconnect(user);
     }
+    [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)] static extern int NetUserGetInfo(string? server,string name,int level,out IntPtr buffer);
     static void Protect(LocalUser u)
     {
-        var reason=AccountRules.ProtectedReason(u.Sid,CurrentSid);
-        if(reason!=null)throw new InvalidOperationException("Được bảo vệ: "+reason+".");
-    }
-    public static void ResetPassword(LocalUser user,string password)
-    {
-        user=Fresh(user);Protect(user);AccountUpdates.Password(user.Name,password);
-    }
-    public static void Unlock(LocalUser user)
-    {
-        user=Fresh(user);Protect(user);AccountUpdates.Flags(user.Name,flags=>flags & ~0x10u);
+        if (u.Sid == CurrentSid || u.Sid.EndsWith("-500",StringComparison.Ordinal) || u.Sid.EndsWith("-501",StringComparison.Ordinal) || u.Sid.EndsWith("-503",StringComparison.Ordinal) || u.Sid.EndsWith("-504",StringComparison.Ordinal))
+            throw new InvalidOperationException("Bảo vệ tài khoản hiện tại hoặc tài khoản Windows tích hợp.");
     }
     public static void Rdp(LocalUser user,bool enabled)
     {
@@ -82,38 +74,24 @@ public static class WindowsAccounts
         if (code is not (1378 or 1377)) Check(code);
         if (enabled) RdpRights.SetDenied(user.Sid,false);
     }
-    public static List<LocalSession> Sessions()
+    public static void Disconnect(LocalUser user)
     {
-        if(!WTSEnumerateSessions(IntPtr.Zero,0,1,out var p,out var count))throw new Win32Exception();
-        var result=new List<LocalSession>();
+        if (!WTSEnumerateSessions(IntPtr.Zero,0,1,out var p,out var count)) throw new Win32Exception();
         try
         {
             for(int i=0;i<count;i++)
             {
-                var session=Marshal.PtrToStructure<Session>(p+i*Marshal.SizeOf<Session>());
-                string Query(int type)
+                var s=Marshal.PtrToStructure<Session>(p+i*Marshal.SizeOf<Session>());
+                string Query(int type) { if(!WTSQuerySessionInformation(IntPtr.Zero,s.Id,type,out var b,out _)) throw new Win32Exception(); try { return Marshal.PtrToStringUni(b)??""; } finally { WTSFreeMemory(b); } }
+                bool IsRdp()
                 {
-                    if(!WTSQuerySessionInformation(IntPtr.Zero,session.Id,type,out var b,out _))throw new Win32Exception();
-                    try{return Marshal.PtrToStringUni(b)??"";}finally{WTSFreeMemory(b);}
+                    if(!WTSQuerySessionInformation(IntPtr.Zero,s.Id,16,out var b,out var size))throw new Win32Exception();
+                    try { return size>=2 && Marshal.ReadInt16(b)==2; } finally { WTSFreeMemory(b); }
                 }
-                var user=Query(5);if(string.IsNullOrEmpty(user))continue;
-                var domain=Query(7);
-                if(!WTSQuerySessionInformation(IntPtr.Zero,session.Id,16,out var buffer,out var size))throw new Win32Exception();
-                ushort protocol;try{if(size<2)throw new IOException("Windows không trả loại phiên.");protocol=unchecked((ushort)Marshal.ReadInt16(buffer));}finally{WTSFreeMemory(buffer);}
-                result.Add(new(session.Id,user,domain,protocol,session.State));
+                if (IsRdp() && string.Equals(Query(5),user.Name,StringComparison.OrdinalIgnoreCase) && string.Equals(Query(7),Environment.MachineName,StringComparison.OrdinalIgnoreCase))
+                    if(!WTSDisconnectSession(IntPtr.Zero,s.Id,true)) throw new Win32Exception();
             }
         }
-        finally{WTSFreeMemory(p);}
-        return result;
-    }
-    public static int Disconnect(LocalUser user)
-    {
-        user=Fresh(user);Protect(user);int count=0;
-        foreach(var session in Sessions().Where(s=>s.Protocol==2 && s.State!=4 && s.User.Equals(user.Name,StringComparison.OrdinalIgnoreCase) && s.Domain.Equals(Environment.MachineName,StringComparison.OrdinalIgnoreCase)))
-        {
-            if(!WTSDisconnectSession(IntPtr.Zero,session.Id,true))throw new Win32Exception();
-            count++;
-        }
-        return count;
+        finally { WTSFreeMemory(p); }
     }
 }

@@ -16,11 +16,11 @@ public static class Nas
     const string PipeName="WinUser.Credentials.v1";
     static string FilePath=>Path.Combine(Storage.Root,"nas.json");
     public static List<NasMapping> Load()=>Storage.Read(FilePath,new List<NasMapping>());
-    public static void Save(LocalUser user,string drive,string unc,string login,string password)
+    public static void Save(LocalUser user,string drive,string unc,string login,string password,bool overwrite=true)
     {
         user=WindowsAccounts.Fresh(user);drive=Policy.Drive(drive);unc=Policy.Unc(unc);
         if(string.IsNullOrWhiteSpace(login)||string.IsNullOrEmpty(password))throw new ArgumentException("Cần tài khoản và mật khẩu NAS.");
-        var all=Load();var server=unc.Split('\\')[2];
+        var all=Load();if(!overwrite&&all.Any(m=>m.Sid==user.Sid&&m.Drive==drive))throw new ArgumentException("Ổ này đã có cấu hình cho user; chọn Sửa thay vì Thêm.");var server=unc.Split('\\')[2];
         if(all.Any(m=>m.Sid==user.Sid && m.Drive!=drive && m.Unc.Split('\\')[2].Equals(server,StringComparison.OrdinalIgnoreCase) && !m.User.Equals(login,StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException("Windows không hỗ trợ nhiều thông tin đăng nhập SMB cho cùng máy chủ trong một phiên.");
         Backup();all.RemoveAll(m=>m.Sid==user.Sid&&m.Drive==drive);all.Add(new(user.Sid,drive,unc,login,Storage.Encrypt(password)));Storage.Write(FilePath,all);
@@ -40,6 +40,11 @@ public static class Nas
             {
                 using var pipe=NamedPipeServerStreamAcl.Create(PipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,PipeOptions.Asynchronous,16384,16384,security);
                 pipe.WaitForConnectionAsync(stop).GetAwaiter().GetResult();
+                using var helloTimeout=CancellationTokenSource.CreateLinkedTokenSource(stop);helloTimeout.CancelAfter(5000);
+                var expected=Encoding.ASCII.GetBytes("WINUSER/1\n");var hello=new byte[expected.Length];
+                pipe.ReadExactlyAsync(hello,helloTimeout.Token).AsTask().GetAwaiter().GetResult();
+                if(!hello.SequenceEqual(expected))continue;
+                // Impersonation must follow a read: Windows uses the last message's client context.
                 string? sid=null;
                 pipe.RunAsClient(()=> { using var identity=WindowsIdentity.GetCurrent(true);sid=identity?.User?.Value; });
                 if(sid==null)continue;
@@ -87,6 +92,39 @@ public static class Nas
             finally { CloseServiceHandle(service); }}
         finally { CloseServiceHandle(manager); }
     }
+    public static async Task<AgentMapping[]> FetchMappings(CancellationToken stop)
+    {
+        using var pipe=new NamedPipeClientStream(".",PipeName,PipeDirection.InOut,PipeOptions.Asynchronous,TokenImpersonationLevel.Impersonation);
+        using var timeout=CancellationTokenSource.CreateLinkedTokenSource(stop);timeout.CancelAfter(10000);
+        await pipe.ConnectAsync(timeout.Token);
+        if(!GenuineBroker(pipe))throw new IOException("Broker không hợp lệ hoặc không chạy từ dịch vụ đã đăng ký.");
+        await pipe.WriteAsync(Encoding.ASCII.GetBytes("WINUSER/1\n"),timeout.Token);await pipe.FlushAsync(timeout.Token);
+        using var reader=new StreamReader(pipe);var text=await reader.ReadLineAsync(timeout.Token);
+        if(text==null||text.Length>1024*1024)throw new IOException("Dữ liệu Broker không hợp lệ.");
+        return JsonSerializer.Deserialize<AgentMapping[]>(text)??Array.Empty<AgentMapping>();
+    }
+    public static void Update(LocalUser user,string oldDrive,string drive,string unc,string login,string? password)
+    {
+        var old=Load().Single(m=>m.Sid==user.Sid&&m.Drive==Policy.Drive(oldDrive));
+        drive=Policy.Drive(drive);unc=Policy.Unc(unc);
+        if(drive!=old.Drive&&Load().Any(m=>m.Sid==user.Sid&&m.Drive==drive))throw new ArgumentException("Ổ đích đã có cấu hình khác.");
+        if(string.IsNullOrEmpty(password))
+        {
+            if(!login.Equals(old.User,StringComparison.OrdinalIgnoreCase)||!unc.Split('\\')[2].Equals(old.Unc.Split('\\')[2],StringComparison.OrdinalIgnoreCase))throw new ArgumentException("Đổi máy chủ/tài khoản NAS cần nhập mật khẩu mới.");
+            password=Storage.Decrypt(old.ProtectedPassword);
+        }
+        Save(user,drive,unc,login,password);
+        if(old.Drive!=drive)Remove(user,old.Drive);
+    }
+    public static string Health()
+    {
+        var lines=new List<string>();
+        try{using var service=new ServiceController(ServiceName);lines.Add("Broker: "+service.Status);}catch{lines.Add("Broker: chưa cài hoặc không truy vấn được. Đóng WinUser rồi chạy Install.cmd bằng Administrator.");}
+        using var run=Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run");
+        lines.Add("Agent khi đăng nhập: "+(run?.GetValue("WinUserNasAgent") is string?"đã đăng ký":"chưa đăng ký — cần Install.cmd"));
+        lines.Add("Broker sẽ khởi chạy Agent cho user có mapping đang đăng nhập, thử lại mỗi 15 giây. User chưa đăng nhập nhận mapping ở lần đăng nhập sau.");
+        return string.Join(Environment.NewLine,lines);
+    }
     public static async Task Agent(CancellationToken stop)
     {
         var statusFile=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WinUser","nas-status.json");Directory.CreateDirectory(Path.GetDirectoryName(statusFile)!);
@@ -99,14 +137,7 @@ public static class Nas
             var results=new List<object>();
             try
             {
-                using var pipe=new NamedPipeClientStream(".",PipeName,PipeDirection.InOut,PipeOptions.Asynchronous,TokenImpersonationLevel.Impersonation);
-                using var timeout=CancellationTokenSource.CreateLinkedTokenSource(stop);timeout.CancelAfter(10000);
-                await pipe.ConnectAsync(timeout.Token);
-                if(!GenuineBroker(pipe))throw new IOException("Broker không hợp lệ.");
-                using var reader=new StreamReader(pipe);
-                var text=await reader.ReadLineAsync(timeout.Token);
-                if(text==null||text.Length>1024*1024)throw new IOException("Dữ liệu Broker không hợp lệ.");
-                var mappings=JsonSerializer.Deserialize<AgentMapping[]>(text)??Array.Empty<AgentMapping>();
+                var mappings=await FetchMappings(stop);
                 foreach(var old in managed.ToArray())
                 {
                     if(mappings.Any(m=>m.Drive==old.Key&&m.Unc==old.Value.Unc&&m.Revision==old.Value.Revision))continue;
@@ -132,8 +163,8 @@ public static class Nas
 }
 public sealed class BrokerService:ServiceBase
 {
-    CancellationTokenSource? cancellation;Task? worker;
+    CancellationTokenSource? cancellation;Task? worker,launcher;
     public BrokerService(){ServiceName=Nas.ServiceName;CanStop=true;}
-    protected override void OnStart(string[] args){Privileges.EnableAdministration();Storage.Initialize();cancellation=new();worker=Task.Run(()=>Nas.Broker(cancellation.Token));}
-    protected override void OnStop(){cancellation?.Cancel();worker?.Wait(TimeSpan.FromSeconds(10));}
+    protected override void OnStart(string[] args){Privileges.EnableAdministration();Storage.Initialize();cancellation=new();worker=Task.Run(()=>Nas.Broker(cancellation.Token));launcher=Task.Run(()=>AgentLauncher.Run(cancellation.Token));}
+    protected override void OnStop(){cancellation?.Cancel();worker?.Wait(TimeSpan.FromSeconds(10));launcher?.Wait(TimeSpan.FromSeconds(5));}
 }

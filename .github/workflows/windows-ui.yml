@@ -9,7 +9,7 @@ permissions:
 jobs:
   read-only-ui:
     runs-on: windows-latest
-    timeout-minutes: 12
+    timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -19,6 +19,12 @@ jobs:
         run: dotnet run --project tests/PolicyChecks -c Release
       - name: Read-only real Windows account and UI checks
         run: dotnet run --project tests/WindowsUiChecks -c Release -- artifacts/ui-checks
+      - name: Publish actual Broker and Agent executable for fixture
+        run: |
+          dotnet publish src/WinUser/WinUser.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/nas-fixture
+          Copy-Item Install.ps1,Install.cmd artifacts/nas-fixture/
+      - name: Isolated NAS SMB and private-folder export integration
+        run: dotnet run --project tests/WindowsUiChecks -c Release -- --integration-fixture artifacts/nas-fixture
       - name: Upload UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
