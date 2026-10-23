@@ -1,5 +1,10 @@
 # Run as Administrator. Contains no credentials.
 $ErrorActionPreference = 'Stop'
+# A PowerShell 7 parent can pass incompatible module paths to Windows PowerShell 5.1.
+# Use the built-in modules belonging to this interpreter, only for this process.
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+ $env:PSModulePath = Join-Path $PSHOME 'Modules'
+}
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Hay chay Install.cmd bang Run as administrator.' }

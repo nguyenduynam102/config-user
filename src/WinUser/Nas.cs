@@ -121,6 +121,12 @@ public static class Nas
         var lines=new List<string>();
         try{using var service=new ServiceController(ServiceName);lines.Add("Broker: "+service.Status);}catch{lines.Add("Broker: chưa cài hoặc không truy vấn được. Đóng WinUser rồi chạy Install.cmd bằng Administrator.");}
         using var run=Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run");
+        var installed=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"WinUser","WinUser.exe");
+        if(File.Exists(installed))
+        {
+            var version=System.Diagnostics.FileVersionInfo.GetVersionInfo(installed).FileVersion;lines.Add("Bản NAS đã cài: "+version);
+            if(version!="1.0.0.21")lines.Add("Bản cài cũ: đóng WinUser/Agent cũ rồi chạy Install.cmd của Preview 2.1 để cập nhật Broker/Agent.");
+        }
         lines.Add("Agent khi đăng nhập: "+(run?.GetValue("WinUserNasAgent") is string?"đã đăng ký":"chưa đăng ký — cần Install.cmd"));
         lines.Add("Broker sẽ khởi chạy Agent cho user có mapping đang đăng nhập, thử lại mỗi 15 giây. User chưa đăng nhập nhận mapping ở lần đăng nhập sau.");
         return string.Join(Environment.NewLine,lines);
