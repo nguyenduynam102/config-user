@@ -25,15 +25,17 @@ public sealed class PresetEditor:Form
     void RefreshLists(){shortcuts.DataSource=assets.Keys.ToList();nas.DataSource=null;nas.DataSource=mappings.ToList();}
     void EditNas(NasMapping? old)
     {
-        using var d=new Form(){Text="Ánh xạ NAS trong bộ",Width=520,Height=300,StartPosition=FormStartPosition.CenterParent};var flow=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown};
+        using var d=new Form(){Text="Ánh xạ NAS trong bộ",Width=520,Height=350,StartPosition=FormStartPosition.CenterParent};var flow=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown};
         var drive=new TextBox(){Width=430,Text=old?.Drive??"Z:"};var unc=new TextBox(){Width=430,Text=old?.Unc??@"\\nas\share"};var user=new TextBox(){Width=430,Text=old?.User??""};var password=new TextBox(){Width=430,UseSystemPasswordChar=true,PlaceholderText=old==null?"Mật khẩu NAS":"Để trống để giữ mật khẩu cũ"};
-        var save=new Button(){Text="Lưu vào bộ",DialogResult=DialogResult.OK,AutoSize=true};flow.Controls.AddRange(new Control[]{new Label(){Text="Ổ đĩa / UNC / NAS user / mật khẩu",AutoSize=true},drive,unc,user,password,save});d.Controls.Add(flow);
+        var label=new TextBox(){Width=430,Text=old?.Label??"",PlaceholderText="Tên hiển thị của ổ"};
+        var save=new Button(){Text="Lưu vào bộ",DialogResult=DialogResult.OK,AutoSize=true};flow.Controls.AddRange(new Control[]{new Label(){Text="Ổ đĩa / UNC / NAS user / mật khẩu",AutoSize=true},drive,label,unc,user,password,save});d.Controls.Add(flow);
         if(d.ShowDialog(this)!=DialogResult.OK)return;
         var letter=Policy.Drive(drive.Text);var path=Policy.Unc(unc.Text);if(string.IsNullOrWhiteSpace(user.Text))throw new ArgumentException("Cần tài khoản NAS.");
         if(mappings.Any(m=>m!=old&&m.Drive==letter))throw new ArgumentException("Trùng ký tự ổ trong bộ.");
-        var secret=string.IsNullOrEmpty(password.Text)?old?.ProtectedPassword:Storage.Encrypt(password.Text);password.Clear();
+        var keep=string.IsNullOrEmpty(password.Text);var secret=keep?old?.ProtectedPassword:Storage.Encrypt(password.Text);password.Clear();
+        if(old!=null&&keep&&(!user.Text.Equals(old.User,StringComparison.OrdinalIgnoreCase)||!path.Split('\\')[2].Equals(old.Unc.Split('\\')[2],StringComparison.OrdinalIgnoreCase)))throw new ArgumentException("Đổi máy chủ hoặc tài khoản cần nhập mật khẩu mới.");
         if(secret==null)throw new ArgumentException("Cần mật khẩu cho ánh xạ mới.");
-        if(old!=null)mappings.Remove(old);mappings.Add(new("",letter,path,user.Text,secret));RefreshLists();
+        if(old!=null)mappings.Remove(old);mappings.Add(new("",letter,path,user.Text,secret,NasLabels.Validate(label.Text)));RefreshLists();
     }
     void Save()
     {

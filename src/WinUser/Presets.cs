@@ -43,6 +43,6 @@ public static class Presets
         foreach(var n in added)SafeFile.Copy(Path.Combine(PathOf(p.Id),n),Path.Combine(desktop,n),false);
         if(p.HasRegistry)UserData.ApplyRegistry(user,Path.Combine(PathOf(p.Id),"settings.reg"));
         if(!string.IsNullOrWhiteSpace(p.PrivateRoot))UserData.PrivateFolder(user,p.PrivateRoot);
-        foreach(var m in p.Nas)Nas.Save(user,m.Drive,m.Unc,m.User,Storage.Decrypt(m.ProtectedPassword));
+        foreach(var m in p.Nas)Nas.Save(user,m.Drive,m.Unc,m.User,Storage.Decrypt(m.ProtectedPassword),true,m.Label);
     }
 }

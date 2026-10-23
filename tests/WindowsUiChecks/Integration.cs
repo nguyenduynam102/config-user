@@ -22,6 +22,7 @@ internal static partial class Program
     [DllImport("Netapi32.dll",CharSet=CharSet.Unicode)]static extern int NetUserDel(string? server,string name);
     [DllImport("Netapi32.dll",CharSet=CharSet.Unicode)]static extern int NetLocalGroupAddMembers(string? server,string group,int level,ref Member member,int count);
     [DllImport("mpr.dll",CharSet=CharSet.Unicode)]static extern int WNetCancelConnection2(string name,int flags,bool force);
+    [DllImport("advapi32.dll",CharSet=CharSet.Unicode,SetLastError=true)]static extern bool LogonUser(string user,string domain,string password,int type,int provider,out IntPtr token);
     static int Integration(string[] args)
     {
         if(Environment.GetEnvironmentVariable("GITHUB_ACTIONS")!="true")throw new InvalidOperationException("Destructive fixture setup is restricted to a disposable GitHub-hosted runner, never a user's PC.");
@@ -36,6 +37,21 @@ internal static partial class Program
                 WindowsAccounts.Create(name,password);var user=WindowsAccounts.List().Single(u=>u.Name==name);created.Add(user);
                 var usersGroup=((NTAccount)new SecurityIdentifier("S-1-5-32-545").Translate(typeof(NTAccount))).Value.Split('\\').Last();var member=new Member{Name=Environment.MachineName+"\\"+name};var code=NetLocalGroupAddMembers(null,usersGroup,3,ref member,1);if(code is not (0 or 1378))throw new Win32Exception(code);
             }
+            Check("account edit rename password flags RDP and delete use real Windows APIs",()=>
+            {
+                var original="WuE"+suffix;var renamed="WuR"+suffix;
+                try
+                {
+                    WindowsAccounts.Create(original,password);var user=WindowsAccounts.List().Single(u=>u.Name==original);var sid=user.Sid;
+                    WindowsAccounts.Edit(user,"Fixture full name","Fixture description",true);var info=WindowsAccounts.Details(user);if(info.FullName!="Fixture full name"||info.Description!="Fixture description"||(info.Flags&0x10000)==0)throw new Exception("Account metadata not saved");
+                    WindowsAccounts.Rename(user,renamed);user=WindowsAccounts.List().Single(u=>u.Name==renamed);if(user.Sid!=sid)throw new Exception("Rename changed SID");
+                    var secret=password+"X";WindowsAccounts.Password(user,secret);if(!LogonUser(renamed,Environment.MachineName,secret,2,0,out var token))throw new Win32Exception();CloseHandle(token);
+                    WindowsAccounts.Enabled(user,false);if(WindowsAccounts.Fresh(user).Enabled)throw new Exception("Disable failed");WindowsAccounts.Enabled(user,true);WindowsAccounts.Unlock(user);
+                    WindowsAccounts.Rdp(user,true);if(!WindowsAccounts.Fresh(user).Rdp)throw new Exception("Open RDP failed");WindowsAccounts.Rdp(user,false);if(!RdpRights.Denied(sid)||WindowsAccounts.Fresh(user).Rdp)throw new Exception("Close RDP failed");
+                    WindowsAccounts.Delete(user);if(WindowsAccounts.List().Any(u=>u.Sid==sid))throw new Exception("Delete failed");
+                }
+                finally{NetUserDel(null,original);NetUserDel(null,renamed);}
+            });
             Directory.CreateDirectory(folder);var acl=new DirectorySecurity();acl.SetAccessRuleProtection(true,false);
             foreach(var sid in new[]{"S-1-5-18","S-1-5-32-544"}.Concat(created.Select(u=>u.Sid)))acl.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(sid),FileSystemRights.FullControl,InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));new DirectoryInfo(folder).SetAccessControl(acl);
             var privateRoot=Path.Combine(folder,"Private");Directory.CreateDirectory(privateRoot);Storage.SecureDirectory(privateRoot,created[0].Sid);Directory.CreateDirectory(Path.Combine(privateRoot,"deep"));File.WriteAllText(Path.Combine(privateRoot,"deep","data.txt"),"fixture-data");
@@ -44,13 +60,15 @@ internal static partial class Program
             var zip=Path.Combine(folder,"shared.zip");PrivateExport.Write(PrivateExport.Preview(privateRoot,zip));var extracted=Path.Combine(folder,"Extracted");ZipFile.ExtractToDirectory(zip,extracted);
             Check("ZIP entry contains no NTFS ACL metadata and preserves contents",()=>{using var z=ZipFile.OpenRead(zip);if(z.Entries.Any(e=>e.ExternalAttributes!=0))throw new Exception("Attributes retained");if(File.ReadAllText(Path.Combine(extracted,"deep","data.txt"))!="fixture-data")throw new Exception("Wrong export");if(new FileInfo(Path.Combine(extracted,"deep","large.bin")).Length!=17*1024*1024)throw new Exception("Large document export truncated");});
             Check("export refuses overwriting existing output",()=>{try{PrivateExport.Preview(privateRoot,zip);throw new Exception("Overwrite accepted");}catch(IOException){}});
+            var copied=Path.Combine(folder,"SharedCopy");PrivateExport.WriteFolder(PrivateExport.Preview(privateRoot,copied,true));
+            Check("plain folder export refuses overwrite and preserves inherited destination ACL",()=>{if(new FileInfo(Path.Combine(copied,"deep","large.bin")).Length!=17*1024*1024)throw new Exception("Copy truncated");var rules=new FileInfo(Path.Combine(copied,"deep","data.txt")).GetAccessControl().GetAccessRules(true,true,typeof(SecurityIdentifier));if(!rules.Cast<FileSystemAccessRule>().Any(r=>r.IsInherited&&r.IdentityReference.Value==created[1].Sid))throw new Exception("Destination ACL not inherited");try{PrivateExport.Preview(privateRoot,copied,true);throw new Exception("Overwrite accepted");}catch(IOException){}});
             var smb1=Path.Combine(folder,"SMB1");var smb2=Path.Combine(folder,"SMB2");Directory.CreateDirectory(smb1);Directory.CreateDirectory(smb2);
             RunPowerShell($"New-SmbShare -Name '{share1}' -Path '{smb1}' -FullAccess '{Environment.MachineName}\\{nas}' | Out-Null; New-SmbShare -Name '{share2}' -Path '{smb2}' -FullAccess '{Environment.MachineName}\\{nas}' | Out-Null");
             var unc1=@"\\127.0.0.1\"+share1;var unc2=@"\\127.0.0.1\"+share2;var login=Environment.MachineName+"\\"+nas;
-            Nas.Save(created[0],"Y:",unc1,login,password,false);Nas.Save(created[0],"Z:",unc2,login,password,false);Nas.Save(created[1],"X:",unc2,login,password,false);
+            Nas.Save(created[0],"Y:",unc1,login,password,false,"Tài liệu Y");Nas.Save(created[0],"Z:",unc2,login,password,false,"Tài liệu Z");Nas.Save(created[1],"X:",unc2,login,password,false,"Tài liệu X");
             Check("NAS config keeps password encrypted",()=>{if(File.ReadAllText(nasFile).Contains(password))throw new Exception("Plaintext credential");});
             Check("Add rejects duplicate drive without overwriting",()=>{try{Nas.Save(created[0],"Y:",unc2,login,password,false);throw new Exception("Duplicate accepted");}catch(ArgumentException){}if(Nas.Load().Single(m=>m.Sid==created[0].Sid&&m.Drive=="Y:").Unc!=unc1)throw new Exception("Changed existing mapping");});
-            Check("editing can keep encrypted password for same server/account",()=>Nas.Update(created[0],"Z:","Z:",unc2,login,null));
+            Check("editing can keep encrypted password for same server/account",()=>Nas.Update(created[0],"Z:","Z:",unc2,login,null,"Tài liệu Z"));
             var payload=Path.GetFullPath(args[1]);RunPowerShell("& '"+Path.Combine(payload,"Install.ps1")+"'");installed=true;
             using(var service=new ServiceController(Nas.ServiceName))service.WaitForStatus(ServiceControllerStatus.Running,TimeSpan.FromSeconds(30));
             RunPowerShell("Start-Service seclogon");
@@ -104,6 +122,8 @@ internal static partial class Program
             while(!File.Exists(status)&&DateTime.UtcNow<deadline)Thread.Sleep(200);
             if(!File.Exists(status))throw new Exception("Agent produced no status");
             foreach(var drive in drives){var file=drive+"\\client-"+sid.Split('-').Last()+".txt";File.WriteAllText(file,"smb-fixture");if(File.ReadAllText(file)!="smb-fixture")throw new Exception("SMB read/write failed");}
+            foreach(var m in mappings){using var label=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2\"+m.Unc.Replace('\\','#'));if((string?)label?.GetValue("_LabelFromReg")!=m.Label)throw new Exception("NAS display name not applied in target user's hive");}
+            if(File.ReadAllText(Path.Combine(folder,"SharedCopy","deep","data.txt"))!="fixture-data")throw new Exception("Plain folder copy not readable by target user");
             if(File.ReadAllText(Path.Combine(folder,"Extracted","deep","data.txt"))!="fixture-data")throw new Exception("Exported file not readable");
             if(drives.Length==1){try{File.ReadAllText(Path.Combine(folder,"Private","deep","data.txt"));throw new Exception("Private data leaked to another user");}catch(UnauthorizedAccessException){}}
             else if(File.ReadAllText(Path.Combine(folder,"Private","deep","data.txt"))!="fixture-data")throw new Exception("Owner cannot read private data");

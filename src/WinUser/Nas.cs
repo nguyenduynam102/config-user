@@ -7,23 +7,24 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 namespace WinUser;
-public record NasMapping(string Sid,string Drive,string Unc,string User,string ProtectedPassword);
-public record AgentMapping(string Drive,string Unc,string User,string Password,string Revision="");
-public record ManagedMapping(string Unc,string Revision);
+public record NasMapping(string Sid,string Drive,string Unc,string User,string ProtectedPassword,string Label="");
+public record AgentMapping(string Drive,string Unc,string User,string Password,string Revision="",string Label="");
+public record ManagedMapping(string Unc,string Revision,string Label="");
 public static class Nas
 {
     public const string ServiceName="WinUserBroker";
     const string PipeName="WinUser.Credentials.v1";
     static string FilePath=>Path.Combine(Storage.Root,"nas.json");
     public static List<NasMapping> Load()=>Storage.Read(FilePath,new List<NasMapping>());
-    public static void Save(LocalUser user,string drive,string unc,string login,string password,bool overwrite=true)
+    public static void Save(LocalUser user,string drive,string unc,string login,string password,bool overwrite=true,string label="")
     {
-        user=WindowsAccounts.Fresh(user);drive=Policy.Drive(drive);unc=Policy.Unc(unc);
+        label=NasLabels.Validate(label);user=WindowsAccounts.Fresh(user);drive=Policy.Drive(drive);unc=Policy.Unc(unc);
         if(string.IsNullOrWhiteSpace(login)||string.IsNullOrEmpty(password))throw new ArgumentException("Cần tài khoản và mật khẩu NAS.");
         var all=Load();if(!overwrite&&all.Any(m=>m.Sid==user.Sid&&m.Drive==drive))throw new ArgumentException("Ổ này đã có cấu hình cho user; chọn Sửa thay vì Thêm.");var server=unc.Split('\\')[2];
         if(all.Any(m=>m.Sid==user.Sid && m.Drive!=drive && m.Unc.Split('\\')[2].Equals(server,StringComparison.OrdinalIgnoreCase) && !m.User.Equals(login,StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException("Windows không hỗ trợ nhiều thông tin đăng nhập SMB cho cùng máy chủ trong một phiên.");
-        Backup();all.RemoveAll(m=>m.Sid==user.Sid&&m.Drive==drive);all.Add(new(user.Sid,drive,unc,login,Storage.Encrypt(password)));Storage.Write(FilePath,all);
+        if(all.Any(m=>m.Sid==user.Sid&&m.Drive!=drive&&m.Unc.Equals(unc,StringComparison.OrdinalIgnoreCase)&&m.Label!=label))throw new ArgumentException("Các ổ cùng share phải dùng cùng tên hiển thị trong Explorer.");
+        Backup();all.RemoveAll(m=>m.Sid==user.Sid&&m.Drive==drive);all.Add(new(user.Sid,drive,unc,login,Storage.Encrypt(password),label));Storage.Write(FilePath,all);
     }
     public static void Remove(LocalUser user,string drive)
     {var all=Load();drive=Policy.Drive(drive);Backup();all.RemoveAll(m=>m.Sid==user.Sid&&m.Drive==drive);Storage.Write(FilePath,all);}
@@ -50,7 +51,7 @@ public static class Nas
                 if(sid==null)continue;
                 // No requested SID is accepted from the caller.
                 var user=WindowsAccounts.List().SingleOrDefault(u=>u.Sid==sid);
-                var payload=user is { Enabled:true }?Load().Where(m=>m.Sid==sid).Select(m=>new AgentMapping(m.Drive,m.Unc,m.User,Storage.Decrypt(m.ProtectedPassword),Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(m.ProtectedPassword))))).ToArray():Array.Empty<AgentMapping>();
+                var payload=user is { Enabled:true }?Load().Where(m=>m.Sid==sid).Select(m=>new AgentMapping(m.Drive,m.Unc,m.User,Storage.Decrypt(m.ProtectedPassword),Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(m.ProtectedPassword))),m.Label)).ToArray():Array.Empty<AgentMapping>();
                 var bytes=JsonSerializer.SerializeToUtf8Bytes(payload);
                 using var timeout=CancellationTokenSource.CreateLinkedTokenSource(stop);timeout.CancelAfter(TimeSpan.FromSeconds(5));
                 pipe.WriteAsync(bytes,timeout.Token).AsTask().GetAwaiter().GetResult();
@@ -103,7 +104,7 @@ public static class Nas
         if(text==null||text.Length>1024*1024)throw new IOException("Dữ liệu Broker không hợp lệ.");
         return JsonSerializer.Deserialize<AgentMapping[]>(text)??Array.Empty<AgentMapping>();
     }
-    public static void Update(LocalUser user,string oldDrive,string drive,string unc,string login,string? password)
+    public static void Update(LocalUser user,string oldDrive,string drive,string unc,string login,string? password,string label="")
     {
         var old=Load().Single(m=>m.Sid==user.Sid&&m.Drive==Policy.Drive(oldDrive));
         drive=Policy.Drive(drive);unc=Policy.Unc(unc);
@@ -113,7 +114,7 @@ public static class Nas
             if(!login.Equals(old.User,StringComparison.OrdinalIgnoreCase)||!unc.Split('\\')[2].Equals(old.Unc.Split('\\')[2],StringComparison.OrdinalIgnoreCase))throw new ArgumentException("Đổi máy chủ/tài khoản NAS cần nhập mật khẩu mới.");
             password=Storage.Decrypt(old.ProtectedPassword);
         }
-        Save(user,drive,unc,login,password);
+        Save(user,drive,unc,login,password,true,label);
         if(old.Drive!=drive)Remove(user,old.Drive);
     }
     public static string Health()
@@ -125,7 +126,7 @@ public static class Nas
         if(File.Exists(installed))
         {
             var version=System.Diagnostics.FileVersionInfo.GetVersionInfo(installed).FileVersion;lines.Add("Bản NAS đã cài: "+version);
-            if(version!="1.0.0.21")lines.Add("Bản cài cũ: đóng WinUser/Agent cũ rồi chạy Install.cmd của Preview 2.1 để cập nhật Broker/Agent.");
+            if(version!="1.0.0.22")lines.Add("Bản cài cũ: đóng WinUser/Agent cũ rồi chạy Install.cmd của Preview 2.1 để cập nhật Broker/Agent.");
         }
         lines.Add("Agent khi đăng nhập: "+(run?.GetValue("WinUserNasAgent") is string?"đã đăng ký":"chưa đăng ký — cần Install.cmd"));
         lines.Add("Broker sẽ khởi chạy Agent cho user có mapping đang đăng nhập, thử lại mỗi 15 giây. User chưa đăng nhập nhận mapping ở lần đăng nhập sau.");
@@ -150,13 +151,13 @@ public static class Nas
                     var remote=new StringBuilder(4096);var length=remote.Capacity;
                     if(WNetGetConnection(old.Key,remote,ref length)==0 && remote.ToString().Equals(old.Value.Unc,StringComparison.OrdinalIgnoreCase))
                     {var code=WNetCancelConnection2(old.Key,0,false);if(code!=0){results.Add(new{drive=old.Key,code});continue;}}
-                    managed.Remove(old.Key);
+                    NasLabels.Clear(old.Value.Unc,old.Value.Label);managed.Remove(old.Key);
                 }
                 foreach(var m in mappings)
                 {
                     if(managed.TryGetValue(m.Drive,out var old) && (old.Unc!=m.Unc || old.Revision!=m.Revision))
                     {results.Add(new{drive=m.Drive,code=2401});continue;}
-                    var code=Connect(m);if(code==0)managed[m.Drive]=new(m.Unc,m.Revision);results.Add(new{drive=m.Drive,code});
+                    var code=Connect(m);if(code==0){if(managed.TryGetValue(m.Drive,out var previous)&&previous.Label!=m.Label)NasLabels.Clear(previous.Unc,previous.Label);NasLabels.Apply(m.Unc,m.Label);managed[m.Drive]=new(m.Unc,m.Revision,m.Label);}results.Add(new{drive=m.Drive,code});
                 }
                 Storage.Write(managedFile,managed);
                 Storage.Write(statusFile,new{utc=DateTime.UtcNow,broker=true,results});

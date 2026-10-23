@@ -2,8 +2,13 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 namespace WinUser;
-public record LocalUser(string Name, string Sid, bool Enabled, bool Rdp);
-public static class WindowsAccounts
+public record LocalUser(string Name, string Sid, bool Enabled, bool Rdp)
+{
+    public string AccountStatus {get;init;} = Enabled ? "Đang bật" : "Đã khóa";
+    public string RdpStatus => Rdp ? "Mở RDP*" : "Đóng / chưa cấp";
+    public string SessionStatus {get;init;} = "Chưa đăng nhập";
+}
+public static partial class WindowsAccounts
 {
     const uint Disabled = 2;
     [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] struct User1 { public string Name, Password; public uint PasswordAge, Privilege; public string? Home, Comment; public uint Flags; public string? Script; }
@@ -37,7 +42,7 @@ public static class WindowsAccounts
         foreach(var u in AccountEnumeration.Read())
         {
             var sid=new SecurityIdentifier(u.Sid,0).Value;
-            result.Add(new(u.Name,sid,(u.Flags & Disabled)==0,members.Contains(sid) && !RdpRights.Denied(sid)));
+            result.Add(new(u.Name,sid,(u.Flags & Disabled)==0,members.Contains(sid) && !RdpRights.Denied(sid)) { AccountStatus=(u.Flags & Disabled)!=0 ? "Đã khóa" : (u.Flags & 0x10)!=0 ? "Khóa do sai mật khẩu" : "Đang bật", SessionStatus=SessionSummary(u.Name) });
         }
         return result.OrderBy(u=>u.Name).ToList();
     }
@@ -48,6 +53,9 @@ public static class WindowsAccounts
         if (string.IsNullOrWhiteSpace(password)) throw new ArgumentException("Mật khẩu không được trống.");
         var u=new User1 { Name=name, Password=password, Privilege=1, Flags=0x201 };
         Check(NetUserAdd(null,1,ref u,out _));
+        var member=new Member{Name=Environment.MachineName+"\\"+name};
+        var code=NetLocalGroupAddMembers(null,Group("S-1-5-32-545"),3,ref member,1);
+        if(code is not (0 or 1378))throw new InvalidOperationException("User đã tạo nhưng chưa thêm được nhóm Users: "+new Win32Exception(code).Message);
     }
     public static void Enabled(LocalUser user, bool enabled)
     {
@@ -76,6 +84,7 @@ public static class WindowsAccounts
     }
     public static void Disconnect(LocalUser user)
     {
+        user=Fresh(user); Protect(user);
         if (!WTSEnumerateSessions(IntPtr.Zero,0,1,out var p,out var count)) throw new Win32Exception();
         try
         {

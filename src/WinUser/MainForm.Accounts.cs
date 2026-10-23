@@ -1,0 +1,24 @@
+using System.Diagnostics;
+namespace WinUser;
+public sealed partial class MainForm
+{
+    void BuildAccountsPage(TabControl tabs)
+    {
+        var page=Page(tabs,"Quản lý User / RDP");
+        page.Controls.Add(Note("USER ĐÍCH ở bảng trái: click chọn một, Ctrl/Shift chọn nhiều hoặc chuyển sang ô tick. Đổi bộ lọc sẽ bỏ lựa chọn để tránh thao tác nhầm user ẩn.\r\nMở RDP* = cấp nhóm và bỏ Deny trực tiếp; còn phụ thuộc bật RDP, mật khẩu, nhóm/chính sách miền và giới hạn phiên Windows. Khóa tài khoản ngăn đăng nhập mới và ngắt phiên RDP, không đăng xuất. Đổi tên không đổi đường dẫn profile; xóa user giữ nguyên dữ liệu."));
+        var bar=Bar();bar.Controls.AddRange(new Control[]{Button("＋ Tạo user",CreateUser),Button("Sửa / Chi tiết",EditAccount),Button("Đổi tên",RenameAccount),Button("Đổi mật khẩu",ChangePassword),Button("Xóa user",DeleteAccount),Button("Khóa tài khoản",()=>Batch("Khóa tài khoản + ngắt phiên RDP",u=>WindowsAccounts.Enabled(u,false))),Button("Mở tài khoản",()=>Batch("Bật tài khoản",u=>WindowsAccounts.Enabled(u,true))),Button("Gỡ khóa sai mật khẩu",()=>Batch("Gỡ lockout",WindowsAccounts.Unlock)),Button("Ngắt phiên",()=>Batch("Ngắt phiên RDP, giữ chương trình đang chạy",WindowsAccounts.Disconnect)),Button("Mở RDP",()=>Batch("Mở RDP: cấp nhóm và bỏ Deny trực tiếp",u=>WindowsAccounts.Rdp(u,true))),Button("Đóng RDP",()=>Batch("Đóng RDP: đặt Deny trực tiếp và gỡ nhóm",u=>WindowsAccounts.Rdp(u,false))),Button("Nhóm cục bộ",EditMembership),Button("Quản lý Windows…",()=>Process.Start(new ProcessStartInfo("lusrmgr.msc"){UseShellExecute=true}))});page.Controls.Add(bar);
+    }
+    void EditAccount()
+    {
+        var u=SingleTarget();var info=WindowsAccounts.Details(u);using var dialog=new Form(){Text="Thông tin: "+u.Name,Width=560,Height=450,StartPosition=FormStartPosition.CenterParent};var panel=Bar();
+        var full=new TextBox(){Width=440,Text=info.FullName};var desc=new TextBox(){Width=440,Text=info.Description};var never=new CheckBox(){Text="Mật khẩu không hết hạn",Checked=(info.Flags&0x10000)!=0,AutoSize=true};
+        panel.Controls.AddRange(new Control[]{new Label(){Text=u.Sid+"\r\n"+u.AccountStatus+" | "+u.SessionStatus+"\r\nNhóm: "+string.Join(", ",info.Groups),Width=480,Height=90},new Label(){Text="Tên đầy đủ",AutoSize=true},full,new Label(){Text="Mô tả",AutoSize=true},desc,never,Button("Lưu",()=>{WindowsAccounts.Edit(u,full.Text,desc.Text,never.Checked);Storage.Log("EditAccount",u.Sid,true);dialog.Close();RefreshUsers();})});dialog.Controls.Add(panel);dialog.ShowDialog(this);
+    }
+    void RenameAccount(){var u=SingleTarget();var name=Prompt("Đổi tên user (giữ SID và đường dẫn profile)",u.Name);if(name==null||!Confirm("Đổi "+u.Name+" → "+name+"? Các chương trình dùng tên cũ có thể cần cập nhật."))return;WindowsAccounts.Rename(u,name);Storage.Log("RenameUser",u.Sid,true);RefreshUsers();RefreshNas();}
+    void ChangePassword()
+    {
+        var u=SingleTarget();using var d=new Form(){Text="Đặt lại mật khẩu: "+u.Name,Width=510,Height=285,StartPosition=FormStartPosition.CenterParent};var panel=Bar();var a=new TextBox(){Width=430,UseSystemPasswordChar=true,PlaceholderText="Mật khẩu mới"};var b=new TextBox(){Width=430,UseSystemPasswordChar=true,PlaceholderText="Nhập lại mật khẩu"};panel.Controls.AddRange(new Control[]{new Label(){Text="Đặt lại bởi admin có thể làm mất quyền đọc EFS, chứng chỉ và bí mật DPAPI cũ. Không đọc hoặc hiển thị mật khẩu hiện tại.",Width=450,Height=65},a,b,Button("Đặt lại",()=>{if(a.Text!=b.Text)throw new ArgumentException("Hai mật khẩu không khớp.");if(!Confirm("Đặt lại mật khẩu cho "+u.Name+"? Đã kiểm tra dữ liệu EFS/DPAPI của user?"))return;WindowsAccounts.Password(u,a.Text);a.Clear();b.Clear();Storage.Log("ResetPassword",u.Sid,true);d.Close();})});d.Controls.Add(panel);d.ShowDialog(this);
+    }
+    void DeleteAccount(){var u=SingleTarget();if(Prompt("Gõ đúng tên user để xóa tài khoản; GIỮ profile/tệp")!=u.Name)return;if(!Confirm("Xóa tài khoản "+u.Name+" và cấu hình NAS của SID này? Không thể khôi phục SID bằng cách tạo lại cùng tên."))return;WindowsAccounts.Delete(u);Storage.Log("DeleteUser",u.Sid,true);RefreshUsers();RefreshNas();}
+    void EditMembership(){var u=SingleTarget();var info=WindowsAccounts.Details(u);var group=Prompt("Nhóm hiện tại: "+string.Join(", ",info.Groups)+". Nhập tên nhóm cục bộ:");if(string.IsNullOrWhiteSpace(group))return;var choice=MessageBox.Show("Thêm "+u.Name+" vào "+group+"?\r\nCó = Thêm; Không = Gỡ; Hủy = Dừng.","Nhóm cục bộ",MessageBoxButtons.YesNoCancel);if(choice==DialogResult.Cancel)return;WindowsAccounts.Membership(u,group,choice==DialogResult.Yes);Storage.Log("GroupMembership",u.Sid,true);RefreshUsers();}
+}
