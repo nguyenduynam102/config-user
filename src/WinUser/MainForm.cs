@@ -5,7 +5,7 @@ public sealed partial class MainForm:Form
 {
     readonly DataGridView users=new(){Dock=DockStyle.Fill,AutoGenerateColumns=false,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false,SelectionMode=DataGridViewSelectionMode.FullRowSelect};
     readonly TextBox output=new(){Dock=DockStyle.Bottom,Height=145,Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical};
-    readonly ComboBox source=new(){Width=240,DropDownStyle=ComboBoxStyle.DropDownList,DisplayMember="Name",AutoCompleteMode=AutoCompleteMode.SuggestAppend,AutoCompleteSource=AutoCompleteSource.ListItems};
+    readonly ComboBox source=new(){Width=240,DropDownStyle=ComboBoxStyle.DropDownList,DisplayMember="Name",AutoCompleteSource=AutoCompleteSource.ListItems,AutoCompleteMode=AutoCompleteMode.SuggestAppend};
     readonly ListView shortcuts=new(){Dock=DockStyle.Fill,View=View.LargeIcon,CheckBoxes=true,MultiSelect=true,LargeImageList=new ImageList(){ImageSize=new Size(32,32),ColorDepth=ColorDepth.Depth32Bit}};
     readonly TextBox regFile=new(){Width=430,ReadOnly=true},privateRoot=new(){Width=350,ReadOnly=true};
     readonly ComboBox presetList=new(){Width=270,DropDownStyle=ComboBoxStyle.DropDownList,DisplayMember="Name"};
