@@ -1,3 +1,19 @@
+# Bằng chứng Preview 2.2
+
+Mã ứng dụng: `3093b5e1dfbafd66be8d958b0f8d7263b8c21574` (tiếp tục từ bản 2.1; không dùng giao diện bản 3). [CI Windows bản cuối](https://github.com/nguyenduynam102/config-user/actions/runs/40015948148).
+
+Phạm vi kiểm tra tự động:
+
+- 39 ca chính sách đầu vào; 5 ca hồi quy native-contract NetAPI trên Linux.
+- 11 ca API/giao diện Windows: danh sách thật, các nút tài khoản/RDP/NAS, cột trạng thái RDP, nguồn không tự chọn, chọn nhiều bằng bôi đen, checkbox độc lập, lọc bỏ đích ẩn, không có nút Shutdown. Ảnh từng tab được lưu trong artifact CI.
+- 11 nhóm kiểm tra tích hợp trên Windows VM dùng một lần: tạo user, tên đầy đủ/mô tả/flags, đổi tên giữ SID, đặt lại mật khẩu rồi đăng nhập thật, khóa/mở/gỡ lockout, RDP grant/deny, xóa; xuất ZIP và thư mục thường không mang ACL nguồn; chống đích trong nguồn/ghi đè; file 17 MiB không bị cắt; DPAPI; thêm trùng NAS; sửa giữ mật khẩu; dịch vụ Broker thật và Agent dưới hai user thường, cô lập mapping theo SID, SMB đọc/ghi thật; tên ổ xuất hiện đúng HKCU user; user khác đọc bản sao nhưng không đọc nguồn riêng; xóa mapping giữ dữ liệu NAS.
+
+Không thực hiện Shutdown theo yêu cầu cập nhật của người dùng. Kiểm tra Windows-hosted CI không thay thế nghiệm thu Windows 10 Pro, RDP từ máy khác, TrueNAS, GPO, DPI và các ca phục hồi bên dưới. Trạng thái RDP trong app mô tả grant/deny trực tiếp; chưa khẳng định quyền hiệu lực sau mọi chính sách nhóm/miền.
+
+Chia sẻ dữ liệu: dùng **Sao chép ra thư mục chung** hoặc **Xuất ZIP chia sẻ**. Người nhận cần quyền nơi nhận; app không sửa tự động mọi thao tác Explorer, và không gỡ EFS/DRM/mật khẩu tài liệu.
+
+---
+
 # Kiểm thử Windows 10 Pro x64 / TrueNAS SCALE
 
 Trạng thái: các ca nghiệm thu Windows 10 Pro bên dưới vẫn chưa chạy đầy đủ. Preview 3 đã bổ sung kiểm tra chỉ đọc UI/NetAPI trên Windows Server của GitHub Actions; phạm vi và bằng chứng được tách riêng ở cuối tài liệu. Không nghiệm thu v1.0 trước khi ghi bằng chứng vào bảng này. Cần một VM Windows 10 Pro x64 có snapshot, tài khoản quản trị dự phòng, một máy khách RDP và TrueNAS SMB thử nghiệm. Không thử trên dữ liệu sản xuất.

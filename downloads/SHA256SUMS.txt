@@ -1,6 +1,8 @@
 53662ea9332f024b3b288b3a07689f24481e1be75961f34caf81bbe9564d27d5  WinUser-source-preview2.1.zip
+e2183615ef75245a5060ea9d5f3958e2aafca86a853c6db1c26c7b698844fe0a  WinUser-source-preview2.2.zip
 c4f0dd3bb008a966881a85389fd664fc67294e639fdb62c44a8432de1c10dc37  WinUser-source-preview3.zip
 3a29e6026647bad96ab7cfa1a3b971ad69426f558dcb8e803f5e92a0198ae10b  WinUser-v1.0-preview-win-x64.zip
 c32cad8e7fd6aeca00a6e9efd578100195f62fc5fca57105ff8142faf245eeaa  WinUser-v1.0-preview2-win-x64.zip
 246e5f8914412ae9afaf749e200237ed8ad9c53ba66eb5c571c32c1c5183e4f6  WinUser-v1.0-preview2.1-win-x64.zip
+5eaaf98fb3732ac59444ee85047fcb24f5dfb626f9974b03dfdfff289d5692c3  WinUser-v1.0-preview2.2-win-x64.zip
 be2d1d146b408c13126fc30d2f7006ea7ff250c6e057e695c3cf8f2a8da1d05d  WinUser-v1.0-preview3-win-x64.zip
