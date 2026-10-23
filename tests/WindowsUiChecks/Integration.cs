@@ -16,6 +16,9 @@ internal static partial class Program
     [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]struct Member{public string Name;}
     [DllImport("advapi32.dll",CharSet=CharSet.Unicode,SetLastError=true)]static extern bool CreateProcessWithLogonW(string user,string domain,string password,int flags,string application,StringBuilder command,uint creation,IntPtr environment,string directory,ref Startup startup,out ProcessInfo process);
     [DllImport("kernel32.dll")]static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll",SetLastError=true)]static extern uint WaitForSingleObject(IntPtr handle,uint milliseconds);
+    [DllImport("kernel32.dll",SetLastError=true)]static extern bool GetExitCodeProcess(IntPtr handle,out uint code);
+    [DllImport("kernel32.dll",SetLastError=true)]static extern bool TerminateProcess(IntPtr handle,uint code);
     [DllImport("Netapi32.dll",CharSet=CharSet.Unicode)]static extern int NetUserDel(string? server,string name);
     [DllImport("Netapi32.dll",CharSet=CharSet.Unicode)]static extern int NetLocalGroupAddMembers(string? server,string group,int level,ref Member member,int count);
     [DllImport("mpr.dll",CharSet=CharSet.Unicode)]static extern int WNetCancelConnection2(string name,int flags,bool force);
@@ -36,8 +39,11 @@ internal static partial class Program
             Directory.CreateDirectory(folder);var acl=new DirectorySecurity();acl.SetAccessRuleProtection(true,false);
             foreach(var sid in new[]{"S-1-5-18","S-1-5-32-544"}.Concat(created.Select(u=>u.Sid)))acl.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(sid),FileSystemRights.FullControl,InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));new DirectoryInfo(folder).SetAccessControl(acl);
             var privateRoot=Path.Combine(folder,"Private");Directory.CreateDirectory(privateRoot);Storage.SecureDirectory(privateRoot,created[0].Sid);Directory.CreateDirectory(Path.Combine(privateRoot,"deep"));File.WriteAllText(Path.Combine(privateRoot,"deep","data.txt"),"fixture-data");
+            using(var big=new FileStream(Path.Combine(privateRoot,"deep","large.bin"),FileMode.CreateNew))big.SetLength(17*1024*1024);
+            Check("export rejects destination inside private source",()=>{try{PrivateExport.Preview(privateRoot,Path.Combine(privateRoot,"bad.zip"));throw new Exception("Unsafe destination accepted");}catch(IOException){}});
             var zip=Path.Combine(folder,"shared.zip");PrivateExport.Write(PrivateExport.Preview(privateRoot,zip));var extracted=Path.Combine(folder,"Extracted");ZipFile.ExtractToDirectory(zip,extracted);
-            Check("ZIP entry contains no NTFS ACL metadata and preserves contents",()=>{using var z=ZipFile.OpenRead(zip);if(z.Entries.Any(e=>e.ExternalAttributes!=0))throw new Exception("Attributes retained");if(File.ReadAllText(Path.Combine(extracted,"deep","data.txt"))!="fixture-data")throw new Exception("Wrong export");});
+            Check("ZIP entry contains no NTFS ACL metadata and preserves contents",()=>{using var z=ZipFile.OpenRead(zip);if(z.Entries.Any(e=>e.ExternalAttributes!=0))throw new Exception("Attributes retained");if(File.ReadAllText(Path.Combine(extracted,"deep","data.txt"))!="fixture-data")throw new Exception("Wrong export");if(new FileInfo(Path.Combine(extracted,"deep","large.bin")).Length!=17*1024*1024)throw new Exception("Large document export truncated");});
+            Check("export refuses overwriting existing output",()=>{try{PrivateExport.Preview(privateRoot,zip);throw new Exception("Overwrite accepted");}catch(IOException){}});
             var smb1=Path.Combine(folder,"SMB1");var smb2=Path.Combine(folder,"SMB2");Directory.CreateDirectory(smb1);Directory.CreateDirectory(smb2);
             RunPowerShell($"New-SmbShare -Name '{share1}' -Path '{smb1}' -FullAccess '{Environment.MachineName}\\{nas}' | Out-Null; New-SmbShare -Name '{share2}' -Path '{smb2}' -FullAccess '{Environment.MachineName}\\{nas}' | Out-Null");
             var unc1=@"\\127.0.0.1\"+share1;var unc2=@"\\127.0.0.1\"+share2;var login=Environment.MachineName+"\\"+nas;
@@ -53,7 +59,7 @@ internal static partial class Program
             Nas.Remove(created[1],"X:");Check("remove deletes config without NAS data deletion",()=>{if(Nas.Load().Any(m=>m.Sid==created[1].Sid)||!Directory.Exists(smb2))throw new Exception("Remove failed");});
             Console.WriteLine($"{passed} integration checks passed on real Windows SMB fixture. TrueNAS and Windows 10 remain separate acceptance tests.");return 0;
         }
-        catch(Exception e){Console.Error.WriteLine("FAIL integration: "+e.GetType().Name+" "+e.Message);return 1;}
+        catch(Exception e){Console.Error.WriteLine("FAIL integration: "+e.ToString().Replace(password,"[redacted]"));return 1;}
         finally
         {
             if(installed){try{using var service=new ServiceController(Nas.ServiceName);service.Stop();service.WaitForStatus(ServiceControllerStatus.Stopped,TimeSpan.FromSeconds(30));RunPowerShell("sc.exe delete WinUserBroker | Out-Null; Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run' -Name WinUserNasAgent -ErrorAction SilentlyContinue");}catch{}}
@@ -76,7 +82,15 @@ internal static partial class Program
     {
         var exe=Environment.ProcessPath!;var startup=new Startup{Size=Marshal.SizeOf<Startup>()};var command=new StringBuilder($"\"{exe}\" --client \"{folder}\" {sid} {drives}");
         if(!CreateProcessWithLogonW(name,Environment.MachineName,password,1,exe,command,0,IntPtr.Zero,Path.GetDirectoryName(exe)!,ref startup,out var pi))throw new Win32Exception();
-        CloseHandle(pi.Thread);CloseHandle(pi.Process);using var process=Process.GetProcessById(pi.Id);if(!process.WaitForExit(60000)){process.Kill();throw new Exception("Client timed out");}if(process.ExitCode!=0){var report=Path.Combine(folder,name+".json");throw new Exception("Client failed: "+(File.Exists(report)?File.ReadAllText(report):"no report"));}
+        CloseHandle(pi.Thread);
+        try
+        {
+            if(WaitForSingleObject(pi.Process,60000)!=0){TerminateProcess(pi.Process,1);throw new Exception("Client timed out");}
+            if(!GetExitCodeProcess(pi.Process,out var exit))throw new Win32Exception();
+            if(exit!=0){var report=Path.Combine(folder,name+".json");throw new Exception("Client failed: "+(File.Exists(report)?File.ReadAllText(report):"no report"));}
+        }
+        finally{CloseHandle(pi.Process);}
+
     }
     static int Client(string[] args)
     {
