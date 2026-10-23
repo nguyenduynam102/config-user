@@ -5,7 +5,8 @@ namespace WinUser;
 public record LocalUser(string Name, string Sid, bool Enabled, bool Rdp)
 {
     public string AccountStatus {get;init;} = Enabled ? "Đang bật" : "Đã khóa";
-    public string RdpStatus => Rdp ? "Mở RDP*" : "Đóng / chưa cấp";
+    public bool RdpDenied {get;init;}
+    public string RdpStatus => RdpDenied ? "Đã đóng RDP" : Rdp ? "Đã mở RDP*" : "Chưa cấp RDP";
     public string SessionStatus {get;init;} = "Chưa đăng nhập";
 }
 public static partial class WindowsAccounts
@@ -42,7 +43,8 @@ public static partial class WindowsAccounts
         foreach(var u in AccountEnumeration.Read())
         {
             var sid=new SecurityIdentifier(u.Sid,0).Value;
-            result.Add(new(u.Name,sid,(u.Flags & Disabled)==0,members.Contains(sid) && !RdpRights.Denied(sid)) { AccountStatus=(u.Flags & Disabled)!=0 ? "Đã khóa" : (u.Flags & 0x10)!=0 ? "Khóa do sai mật khẩu" : "Đang bật", SessionStatus=SessionSummary(u.Name) });
+            var denied=RdpRights.Denied(sid);
+            result.Add(new(u.Name,sid,(u.Flags & Disabled)==0,members.Contains(sid) && !denied) { RdpDenied=denied, AccountStatus=(u.Flags & Disabled)!=0 ? "Đã khóa" : (u.Flags & 0x10)!=0 ? "Khóa do sai mật khẩu" : "Đang bật", SessionStatus=SessionSummary(u.Name) });
         }
         return result.OrderBy(u=>u.Name).ToList();
     }
