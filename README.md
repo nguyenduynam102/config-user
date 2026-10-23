@@ -7,10 +7,23 @@
 
 ## Tải chương trình
 
-- [Tải WinUser cho Windows x64 (ZIP chứa EXE và bộ cài)](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview2-win-x64.zip)
-- [Xem bản phát hành và tải mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.2)
+- [Tải WinUser cho Windows x64 (ZIP chứa EXE và bộ cài)](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview3-win-x64.zip)
+- [Xem bản phát hành và tải mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.3)
 
 Giải nén ZIP trước khi chạy. Đây là **bản thử nghiệm, chưa kiểm thử thực tế trên Windows/TrueNAS**. Không dùng trên dữ liệu sản xuất trước khi hoàn thành các ca kiểm thử trong tài liệu.
+
+## Preview 3 — giao diện quản trị mới
+
+- Biểu tượng kèm chữ, nhóm **Tài khoản / Quyền RDP / Phiên**, phông Segoe UI và hỗ trợ DPI PerMonitorV2.
+- Danh sách tìm kiếm Ctrl+F, bộ lọc, sắp xếp cột; click tên chỉ xem chi tiết. Tick checkbox để chọn user đích; Ctrl/Shift + click bôi đen rồi Enter/Space hoặc nút Chọn dòng bôi đen để tick hàng loạt. Lựa chọn được giữ khi chuyển tab, lọc hoặc làm mới. User bị ẩn do lọc vẫn là đích, có cảnh báo số lượng và xác nhận danh sách đầy đủ.
+- Nguồn Desktop là danh sách xổ xuống có tìm kiếm; nút Lấy user đang xem và menu chuột phải giúp chọn nhanh. Nguồn được loại khỏi các đích Desktop. Thay nguồn phải đọc lại shortcut.
+- Đổi mật khẩu riêng từng user (mặc định) hoặc chung; nhập xác nhận, hiện/ẩn tùy chọn, cảnh báo EFS/chứng chỉ/credential. Không tự buộc đổi mật khẩu ở lần đăng nhập sau; không ghi mật khẩu vào log/cấu hình.
+- Khóa tài khoản vẫn vô hiệu hóa + ngắt RDP không logoff. Nút **Ngắt phiên RDP** độc lập không khóa user. **Bật tài khoản** khác **Mở khóa nhập sai**; thao tác sau chỉ xóa lockout, giữ nguyên cờ vô hiệu hóa và quyền RDP.
+- Tác vụ nhiều user chạy nền, báo tiến độ và kết quả từng user. Dừng chỉ bỏ các user chưa chạy, không hủy ngược bước đã thực hiện. Tài khoản đang quản trị và RID Windows tích hợp được bảo vệ; xem trước các user bị bỏ qua.
+- Chi tiết user gồm SID, profile đã tồn tại, trạng thái tài khoản, nhóm/deny RDP trực tiếp, phiên và cấu hình NAS. Chỉ xem chi tiết không tạo profile hoặc đổi quyền.
+- Kiểm tra RDP chỉ đọc: trạng thái bật máy, dịch vụ, NLA, cổng và rule firewall cơ bản. Không tự bật RDP/firewall, không kết luận quyền hiệu lực đầy đủ.
+- Nhớ kích thước cửa sổ/cột, bộ lọc và thư mục gốc; không nhớ mật khẩu, user đích hoặc nguồn giữa hai lần mở. F5 làm mới; mục Trợ giúp mở trang cập nhật chính thức.
+- Kiểm chứng: 49 kiểm tra logic, 10 kiểm tra native-contract trên Linux; workflow Windows UI checks thực thi kiểm tra chỉ đọc trên Windows Server GitHub-hosted. Xem kết quả CI và tài liệu Windows; không thay thế nghiệm thu Windows 10 Pro/RDP/TrueNAS thật.
 
 ## Bản Preview 2 — sửa lỗi tải danh sách user
 
@@ -29,9 +42,9 @@ Máy Linux cloud: chạy `bash scripts/cloud-setup.sh` để cài công cụ tro
 
 ## Sử dụng
 
-- Checkbox bên trái chọn nhiều user. Thao tác thay đổi hiển thị user đích và yêu cầu xác nhận. Kiểm tra kết quả riêng từng user trong khung dưới; một thao tác nhiều bước có thể thành công một phần.
+- Checkbox bên trái chọn user đích; click tên để xem chi tiết. Bôi đen bằng Ctrl/Shift rồi Enter/Space để chọn hàng loạt. Thanh xanh luôn hiện user đích, kể cả user bị ẩn do bộ lọc. Chuyển tab không mất lựa chọn; mở lại app bắt đầu với danh sách đích trống. Thao tác thay đổi có xem trước/xác nhận; xem kết quả từng user ở thanh dưới. Một thao tác nhiều bước có thể thành công một phần.
 - **User/RDP:** tạo user thường có mật khẩu theo chính sách máy; không cấp Administrator. Khóa bằng cờ disabled rồi ngắt các phiên RDP local bằng WTSDisconnectSession, không logoff. Không tắt hoặc đổi RDP của SID đang chạy giao diện và các tài khoản tích hợp. Tắt RDP gán `SeDenyRemoteInteractiveLogonRight` theo SID, gỡ nhóm Remote Desktop Users; bật làm ngược lại. Domain GPO và quyền deny từ nhóm vẫn có thể ngăn đăng nhập. Cột nhóm RDP chỉ phản ánh thành viên trực tiếp cùng deny trực tiếp, không tính đầy đủ chính sách hiệu lực.
-- **Desktop:** chọn nguồn, đọc danh sách, chọn shortcut rồi xem trước/thêm/xóa cho user đích. Chỉ `.lnk/.url`, không Public Desktop, không ghi đè bản trùng. Icon được đọc từ liên kết; lưới chỉ là danh sách xem trước, **chưa hiển thị đúng tọa độ Desktop thật**. Cảnh báo đích `.lnk` không tồn tại không chặn sao chép. Desktop chuyển hướng ngoài profile chưa hỗ trợ. Dùng CreateProfile để chuẩn bị profile mới khi Windows cho phép.
+- **Desktop:** chọn nguồn, đọc danh sách, chọn shortcut rồi xem trước/thêm/xóa cho user đích. Chỉ `.lnk/.url`, không Public Desktop, không ghi đè bản trùng. Biểu tượng phân biệt shortcut file và URL; không tự truy xuất biểu tượng từ đích mạng. Lưới chỉ là danh sách xem trước, **chưa hiển thị đúng tọa độ Desktop thật**. Cảnh báo đích `.lnk` không tồn tại không chặn sao chép. Desktop chuyển hướng ngoài profile chưa hỗ trợ. Dùng CreateProfile để chuẩn bị profile mới khi Windows cho phép.
 - **Registry:** kiểm tra toàn bộ file trước khi ghi. Chỉ REG Version 5.00, `HKCU\Software`, kiểu REG_SZ/REG_DWORD. Không nhận HKLM/HKCR, xóa khóa/giá trị, hex, multiline, Run/RunOnce/Policies/Classes/Winlogon. Đây là phạm vi hỗ trợ có chủ ý; các file khác cần được đánh giá và bổ sung sau. Mount hive bằng SID khi chưa được Windows nạp; không sửa HKCU của Administrator. Hive đang bận/profile roaming có thể gây lỗi và được báo.
 - **Thư mục riêng:** tạo thư mục mới trên NTFS, owner=user, quyền Full Control cho SID user/Administrators/SYSTEM, bỏ kế thừa. Không tự sửa ACL thư mục đã tồn tại, không xóa dữ liệu. Không thể ẩn tên thư mục bằng ACL trên Explorer cục bộ; dùng Access-Based Enumeration của SMB nếu cần ẩn khi duyệt share. ACL TrueNAS phải do quản trị viên NAS quản lý.
 - **Bộ cấu hình:** lưu các lựa chọn hiện tại cùng NAS của user nguồn; đặt tên, sao chép, đổi tên/xóa có sao lưu. Nút Chỉnh sửa cho phép thay tên, RDP, thư mục gốc, Registry, thêm/bỏ shortcut và sửa/thêm/bỏ NAS cùng mật khẩu; không hiển thị mật khẩu cũ. Xem trước rồi lưu bộ, chưa áp dụng lên user. Chọn áp dụng bộ lúc tạo user hoặc áp dụng cho user tồn tại. Tạo user thành công nhưng áp dụng bộ lỗi sẽ giữ user và báo phần chưa hoàn tất.

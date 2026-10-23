@@ -1,6 +1,6 @@
 # Kiểm thử Windows 10 Pro x64 / TrueNAS SCALE
 
-Trạng thái lúc bàn giao: **chưa chạy các ca Windows bên dưới**. Chỉ kiểm tra logic cross-platform và build/publish Windows đã chạy. Không nghiệm thu v1.0 trước khi ghi bằng chứng vào bảng này. Cần một VM Windows 10 Pro x64 có snapshot, tài khoản quản trị dự phòng, một máy khách RDP và TrueNAS SMB thử nghiệm. Không thử trên dữ liệu sản xuất.
+Trạng thái: các ca nghiệm thu Windows 10 Pro bên dưới vẫn chưa chạy đầy đủ. Preview 3 đã bổ sung kiểm tra chỉ đọc UI/NetAPI trên Windows Server của GitHub Actions; phạm vi và bằng chứng được tách riêng ở cuối tài liệu. Không nghiệm thu v1.0 trước khi ghi bằng chứng vào bảng này. Cần một VM Windows 10 Pro x64 có snapshot, tài khoản quản trị dự phòng, một máy khách RDP và TrueNAS SMB thử nghiệm. Không thử trên dữ liệu sản xuất.
 
 | Nhóm | Ca kiểm thử, kết quả bắt buộc | Trạng thái |
 |---|---|---|
@@ -47,3 +47,23 @@ Không đánh dấu các dòng trên đã đạt khi chỉ chạy kiểm tra par
 - Đã chạy trên Linux: 39 policy checks + 5 native-contract checks với fixture C; build/publish x64. Fixture từ chối enum level khác 0 và getinfo khác 23, kiểm tra trả về nhiều trang/lỗi và số buffer chưa giải phóng.
 - Còn phải chạy trên Windows: mở Preview 2, danh sách user hiển thị đúng sau khởi động/Làm mới; nhóm RDP và trạng thái bật khớp Local Users and Groups; không thay đổi tài khoản chỉ khi mở giao diện.
 - Tài liệu API: https://learn.microsoft.com/en-us/windows/win32/api/lmaccess/nf-lmaccess-netuserenum và https://learn.microsoft.com/en-us/windows/win32/api/lmaccess/nf-lmaccess-netlocalgroupgetmembers
+
+## Preview 3 — phạm vi kiểm chứng bổ sung
+
+- Linux: 49 policy/selection checks; 10 native-contract checks. Fixture kiểm tra giữ cờ disabled khi xóa lockout, giữ cờ lockout khi bật tài khoản, USER_INFO_1003 UTF-16 cho mật khẩu và giải phóng buffer khi lỗi.
+- Workflow `.github/workflows/windows-ui.yml` chạy trên `windows-latest` (Windows Server, không phải Windows 10 Pro), quyền repository chỉ đọc.
+- Kiểm tra chỉ đọc: NetAPI/LSA thật trả danh sách, mở MainForm thật, không tự chọn đích, click xem không chọn, bôi đen→tick, giữ đích ẩn khi lọc, nguồn xổ xuống tìm kiếm, nguồn không thành đích Desktop, bảo vệ admin hiện tại, giữ lựa chọn khi refresh và nút hộp mật khẩu không bị cắt. Không tạo/xóa user, đổi mật khẩu, đổi RDP hoặc ngắt phiên trong CI. Một kiểm tra riêng tạo tệp fixture trong thư mục quản trị tạm, xác minh SafeFile đọc/copy/xóa trên Windows rồi dọn đúng thư mục fixture đã tạo; không đụng dữ liệu cá nhân.
+- Workflow chụp ảnh tại hai kích thước cửa sổ và lưu artifact windows-ui-evidence. Chụp ảnh không đồng nghĩa đã kiểm tra bằng mắt hoặc đã đạt mọi mức DPI.
+- Bằng chứng CI ban đầu: https://github.com/nguyenduynam102/config-user/actions/runs/39931069035 (success). Bản tinh chỉnh cuối: https://github.com/nguyenduynam102/config-user/actions/runs/39932349733 (success, 14 kiểm tra Windows). Kết quả được ghi trong VALIDATION.json của gói phát hành.
+
+### Còn cần thử trên Windows 10 Pro
+
+1. Mở EXE self-contained Preview 3 với UAC, DPI 100/150/200%, resize nhỏ/lớn, không cắt nút và văn bản.
+2. Tick user A/B, lọc chỉ A: thanh đích phải báo B ẩn, xác nhận phải liệt kê cả A/B. Click tên C chỉ xem, không vô tình chọn C. Bỏ toàn bộ xóa cả đích ẩn.
+3. Desktop chọn nguồn A bằng gõ tên hoặc lấy user đang xem, tick A/B: thao tác chỉ áp dụng B. Đổi nguồn phải đọc lại danh sách; không sao chép shortcut của nguồn cũ.
+4. User thử nghiệm: đổi mật khẩu riêng/chung đúng/sai xác nhận, policy từ chối có mã lỗi; không xuất mật khẩu trong audit/settings. Không thử reset EFS trên dữ liệu thật.
+5. Vô hiệu hóa khác lockout do nhập sai: mở lockout không được bật tài khoản bị vô hiệu hóa; bật tài khoản không tự gỡ deny RDP.
+6. Ngắt phiên riêng: user vẫn enabled, RDP policy không đổi, ứng dụng trong phiên còn chạy. Khóa tài khoản: disabled + disconnect, không logoff.
+7. Batch nhiều user: giao diện không treo, dừng chỉ bỏ các user chưa chạy; kết quả phân biệt thành công/lỗi/bỏ qua/chưa chạy. Đóng cửa sổ khi đang làm phải chờ bước hiện tại, không cắt ngang.
+8. Kiểm tra RDP không thay firewall/Registry. Rule allow tìm thấy không được coi là chứng minh truy cập hiệu lực khi có block/GPO/NLA/network issue.
+9. Khởi động lại app: nhớ cửa sổ/cột/bộ lọc, không tự chọn user hoặc nạp lại mật khẩu cũ.
