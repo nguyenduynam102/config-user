@@ -126,7 +126,7 @@ public static class Nas
         if(File.Exists(installed))
         {
             var version=System.Diagnostics.FileVersionInfo.GetVersionInfo(installed).FileVersion;lines.Add("Bản NAS đã cài: "+version);
-            if(version!="1.0.0.22")lines.Add("Bản cài cũ: đóng WinUser/Agent cũ rồi chạy Install.cmd của Preview 2.1 để cập nhật Broker/Agent.");
+            if(version!="1.0.0.23")lines.Add("Bản cài cũ: đóng WinUser/Agent cũ rồi chạy Install.cmd của Preview 2.1 để cập nhật Broker/Agent.");
         }
         lines.Add("Agent khi đăng nhập: "+(run?.GetValue("WinUserNasAgent") is string?"đã đăng ký":"chưa đăng ký — cần Install.cmd"));
         lines.Add("Broker sẽ khởi chạy Agent cho user có mapping đang đăng nhập, thử lại mỗi 15 giây. User chưa đăng nhập nhận mapping ở lần đăng nhập sau.");

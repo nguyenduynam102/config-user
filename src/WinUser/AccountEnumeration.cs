@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 namespace WinUser;
-internal record AccountInfo(string Name, uint Flags, byte[] Sid);
+internal record AccountInfo(string Name, uint Flags, byte[] Sid,string FullName="");
 internal static class AccountEnumeration
 {
     [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
@@ -39,7 +39,7 @@ internal static class AccountEnumeration
                         var subAuthorities=Marshal.ReadByte(user.Sid,1);
                         if(subAuthorities>15)throw new IOException("SID tài khoản không hợp lệ.");
                         var sid=new byte[8+4*subAuthorities];Marshal.Copy(user.Sid,sid,0,sid.Length);
-                        result.Add(new(user.Name,user.Flags,sid));
+                        result.Add(new(user.Name,user.Flags,sid,user.FullName??""));
                     }
                     finally {if(info!=IntPtr.Zero)NetApiBufferFree(info);}
                 }

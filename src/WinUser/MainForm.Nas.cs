@@ -9,7 +9,7 @@ public sealed partial class MainForm
         var page=Page(tabs,"NAS");
         foreach(var (field,title,width) in new[]{("WindowsUser","User Windows",140),("Drive","Ổ",50),("Label","Tên ổ",160),("Unc","Đường dẫn SMB",280),("Login","Tài khoản NAS",180)})nasGrid.Columns.Add(new DataGridViewTextBoxColumn(){DataPropertyName=field,HeaderText=title,Width=width});
         page.Controls.Add(nasGrid);var bar=Bar();
-        bar.Controls.AddRange(new Control[]{Button("Thêm ánh xạ",()=>EditNasMapping(false)),Button("Sửa ánh xạ",()=>EditNasMapping(true)),Button("Xóa ánh xạ đã chọn",DeleteNasMapping),Button("Kiểm tra hệ thống NAS",()=>MessageBox.Show(this,Nas.Health(),"Broker / Agent")),Button("Kiểm tra SMB",TestSelectedNas),Button("Làm mới",RefreshNas)});page.Controls.Add(bar);
+        bar.Controls.AddRange(new Control[]{TargetButton("Thêm ánh xạ",()=>EditNasMapping(false)),Button("Sửa ánh xạ",()=>EditNasMapping(true)),Button("Xóa ánh xạ đã chọn",DeleteNasMapping),Button("Kiểm tra hệ thống NAS",()=>MessageBox.Show(this,Nas.Health(),"Broker / Agent")),Button("Kiểm tra SMB",TestSelectedNas),Button("Làm mới",RefreshNas)});page.Controls.Add(bar);
         page.Controls.Add(Note("Thêm: tick các user Windows bên trái rồi bấm Thêm ánh xạ. Sửa/Xóa: chọn một dòng trong bảng. Phải cài Broker/Agent bằng Install.cmd; lưu cấu hình chưa đồng nghĩa đã kết nối. Broker tự khởi chạy Agent cho user đang đăng nhập; user mới nhận mapping khi đăng nhập. Kiểm tra SMB ở đây dùng phiên Administrator, không thay cho kiểm tra phiên user."));
     }
     void RefreshNas()

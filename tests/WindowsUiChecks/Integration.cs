@@ -43,11 +43,11 @@ internal static partial class Program
                 try
                 {
                     WindowsAccounts.Create(original,password);var user=WindowsAccounts.List().Single(u=>u.Name==original);var sid=user.Sid;
-                    WindowsAccounts.Edit(user,"Fixture full name","Fixture description",true);var info=WindowsAccounts.Details(user);if(info.FullName!="Fixture full name"||info.Description!="Fixture description"||(info.Flags&0x10000)==0)throw new Exception("Account metadata not saved");
+                    WindowsAccounts.Edit(user,"Fixture full name","Fixture description",true);var info=WindowsAccounts.Details(user);if(info.FullName!="Fixture full name"||WindowsAccounts.Fresh(user).FullName!="Fixture full name"||info.Description!="Fixture description"||(info.Flags&0x10000)==0)throw new Exception("Account metadata not saved");
                     WindowsAccounts.Rename(user,renamed);user=WindowsAccounts.List().Single(u=>u.Name==renamed);if(user.Sid!=sid)throw new Exception("Rename changed SID");
                     var secret=password+"X";WindowsAccounts.Password(user,secret);if(!LogonUser(renamed,Environment.MachineName,secret,2,0,out var token))throw new Win32Exception();CloseHandle(token);
                     WindowsAccounts.Enabled(user,false);if(WindowsAccounts.Fresh(user).Enabled)throw new Exception("Disable failed");WindowsAccounts.Enabled(user,true);WindowsAccounts.Unlock(user);
-                    WindowsAccounts.Rdp(user,true);if(!WindowsAccounts.Fresh(user).Rdp)throw new Exception("Open RDP failed");WindowsAccounts.Rdp(user,false);if(!RdpRights.Denied(sid)||WindowsAccounts.Fresh(user).Rdp||WindowsAccounts.Fresh(user).RdpStatus!="Đã đóng RDP")throw new Exception("Close RDP failed");
+                    WindowsAccounts.Rdp(user,true);if(!WindowsAccounts.Fresh(user).Rdp)throw new Exception("Open RDP failed");WindowsAccounts.Rdp(user,false);if(!RdpRights.Denied(sid)||WindowsAccounts.Fresh(user).Rdp||WindowsAccounts.Fresh(user).RdpStatus!="Đóng")throw new Exception("Close RDP failed");
                     WindowsAccounts.Delete(user);if(WindowsAccounts.List().Any(u=>u.Sid==sid))throw new Exception("Delete failed");
                 }
                 finally{NetUserDel(null,original);NetUserDel(null,renamed);}

@@ -10,7 +10,7 @@ int passed=0;
 void Check(string label,Action action){action();if(outstanding()!=0)throw new Exception("Native buffer leak");Console.WriteLine("PASS "+label);passed++;}
 Check("enumerates level 0, fetches level 23, preserves flags and SID across pages, skips deleted account",()=>{
  var users=AccountEnumeration.Read();
- if(users.Count!=2||users[0].Name!="alpha"||users[1].Name!="beta"||users[0].Flags!=0x200||users[1].Flags!=0x202||BitConverter.ToUInt32(users[1].Sid,12)!=1002)throw new Exception("Wrong native mapping");
+ if(users[0].FullName!="Nữ A"||users[1].FullName!=""||users.Count!=2||users[0].Name!="alpha"||users[1].Name!="beta"||users[0].Flags!=0x200||users[1].Flags!=0x202||BitConverter.ToUInt32(users[1].Sid,12)!=1002)throw new Exception("Wrong native mapping");
 });
 foreach(var scenario in new[]{1,2})Check("native failure "+scenario+" propagates and frees buffers",()=>{
  mode(scenario);
