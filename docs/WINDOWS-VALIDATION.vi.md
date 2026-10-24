@@ -1,3 +1,14 @@
+# Bằng chứng Preview 2.3 — bảng user và điều hướng
+
+Mã ứng dụng: `71de8bd51f39657e03d7b864bc3cdfc2d8593d10`. [CI Windows bản cuối](https://github.com/nguyenduynam102/config-user/actions/runs/40072005327).
+
+- 39 kiểm tra chính sách, 5 kiểm tra native-contract (bổ sung tên đầy đủ UTF-16 có dấu/null).
+- 17 kiểm tra API/UI Windows: mặc định lọc user enabled, không tự chọn đích; cột tên đầy đủ và RDP ngắn; lệnh ẩn khi chưa chọn, hiện theo nhóm khi chọn; lệnh một user bị vô hiệu hóa khi chọn nhiều; tìm tên đầy đủ; checkbox/Ctrl/Shift theo lựa chọn chuẩn DataGridView; xóa đích ẩn khi lọc; chọn nguồn độc lập; điều hướng đầy đủ bảy trang qua danh sách nhóm; NAS/ZIP cũ vẫn có.
+- 11 nhóm tích hợp tài khoản/SMB/ACL cũ chạy lại, bổ sung xác minh FullName từ danh sách Windows sau khi sửa tên đầy đủ. Không đổi API quản lý quyền thư mục; không thêm Shutdown.
+- Artifact có ảnh lúc khởi động, chọn một user và từng trang. Giao diện đã được kiểm tra ảnh trên Windows CI; kiểm tra DPI 150/200%, RDP Windows 10 và TrueNAS thật vẫn cần nghiệm thu riêng.
+
+---
+
 # Bằng chứng Preview 2.2
 
 Mã ứng dụng: `3093b5e1dfbafd66be8d958b0f8d7263b8c21574` (tiếp tục từ bản 2.1; không dùng giao diện bản 3). [CI Windows bản cuối](https://github.com/nguyenduynam102/config-user/actions/runs/40015948148).

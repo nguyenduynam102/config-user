@@ -1,13 +1,20 @@
-# WinUser RDP Manager — Preview 2.2
+# WinUser RDP Manager — Preview 2.3
 
 Ứng dụng C# WinForms cho Windows x64, tiếp tục từ giao diện bản 2.1. Quản lý user/RDP, shortcut Desktop, Registry theo SID, thư mục riêng, bộ cấu hình và ánh xạ NAS. Không thay đổi giới hạn phiên của Windows.
 
 ## Tải và cài
 
-- [Tải ZIP chứa WinUser.exe và bộ cài](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview2.2-win-x64.zip)
-- [Bản phát hành và mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.2.2)
+- [Tải ZIP chứa WinUser.exe và bộ cài](https://github.com/nguyenduynam102/config-user/raw/refs/heads/main/downloads/WinUser-v1.0-preview2.3-win-x64.zip)
+- [Bản phát hành và mã nguồn](https://github.com/nguyenduynam102/config-user/releases/tag/v1.0.0-preview.2.3)
 
 Giải nén ZIP. Đóng WinUser/Agent cũ, chạy **Install.cmd → Run as administrator** để cập nhật cả ứng dụng, Broker và Agent. Nếu chỉ chạy EXE mới từ Downloads, dịch vụ NAS cũ chưa được cập nhật. Bộ cài giữ cấu hình/bản sao lưu ở `%ProgramData%\WinUser`.
+
+## Bảng user và điều hướng Preview 2.3
+
+- Mặc định chỉ hiện user **Đang bật**; chọn **Tất cả** để xem tài khoản đã khóa/tích hợp.
+- Cột **User / Tên đầy đủ / RDP / Tài khoản / Phiên hiện tại**. Tên đầy đủ lấy trực tiếp từ Windows, để trống nếu chưa đặt; tìm theo user, tên đầy đủ hoặc SID. Ưu tiên độ rộng tên, tên đầy đủ và phiên; RDP dùng nhãn ngắn **Mở* / Đóng / Chưa cấp**. Có thể kéo thay đổi độ rộng, tên đầy đủ tự xuống dòng.
+- Chưa chọn user: chỉ hiện lệnh chung trong cửa sổ tài khoản (Tạo user, Quản lý Windows). Chọn user mới hiện nhóm **Thông tin tài khoản**, **Truy cập tài khoản**, **RDP & phiên**. Các lệnh chỉ dùng một user bị vô hiệu hóa nếu chọn nhiều; lệnh hàng loạt vẫn dùng được.
+- Chọn chức năng bằng danh sách xổ xuống theo nhóm **Tài khoản / Cá nhân hóa / Dữ liệu / Thiết lập / Hệ thống**, thay hàng tab dài. Giữ đủ bảy trang chức năng cũ.
 
 ## Chọn nguồn và đích
 
@@ -23,7 +30,7 @@ Tab Desktop có **USER NGUỒN (đọc)** riêng, gõ ký tự để tìm trong 
 - Đổi tên giữ SID và đường dẫn profile, không đổi `C:\Users\...`. Đặt lại mật khẩu cần nhập lại; admin reset có thể ảnh hưởng EFS/DPAPI của user.
 - Khóa tài khoản ngăn đăng nhập mới và ngắt phiên RDP, không đăng xuất. Có nút ngắt phiên riêng và gỡ lockout do sai mật khẩu.
 - **Mở RDP / Đóng RDP** và cột **Trạng thái RDP** phân biệt đã cấp, đã đóng bằng Deny, chưa cấp. Mở RDP cấp nhóm Remote Desktop Users và bỏ Deny trực tiếp của SID; đóng RDP đặt Deny trực tiếp và gỡ nhóm, không vô hiệu hóa tài khoản.
-- Trạng thái “Đã mở RDP*” là cấu hình trực tiếp do app quản lý, chưa chứng minh đăng nhập được: còn phụ thuộc dịch vụ, edition Windows, mật khẩu, nhóm/chính sách miền. GPO có thể ghi đè.
+- Trạng thái “Mở*” là cấu hình trực tiếp do app quản lý, chưa chứng minh đăng nhập được: còn phụ thuộc dịch vụ, edition Windows, mật khẩu, nhóm/chính sách miền. GPO có thể ghi đè.
 - Xóa tài khoản phải gõ tên, chặn user còn phiên, thu hồi cấu hình NAS nhưng giữ profile/tệp. Tạo lại cùng tên không khôi phục SID/quyền cũ.
 - Thêm/gỡ nhóm cục bộ; nút **Quản lý Windows…** mở `lusrmgr.msc` cho tùy chọn Windows nâng cao, bao gồm quản trị nhóm Administrators. Bảo vệ tài khoản hiện tại và tài khoản Windows tích hợp.
 
@@ -48,6 +55,6 @@ Dữ liệu gốc giữ quyền user sở hữu + Administrators + SYSTEM, kế 
 
 ## Module và kiểm thử
 
-Kế hoạch: [PLAN-2.2.vi.md](docs/PLAN-2.2.vi.md). Tài khoản: `AccountManagement.cs`; giao diện tài khoản: `MainForm.Accounts.cs`; chọn/lọc: `MainForm.Selection.cs`; NAS: `MainForm.Nas.cs`, `Nas.cs`, `NasLabels.cs`; bản sao dữ liệu: `PrivateExport.cs`, `MainForm.PrivateExport.cs`.
+Kế hoạch giao diện: [PLAN-2.3.vi.md](docs/PLAN-2.3.vi.md); chức năng nền: [PLAN-2.2.vi.md](docs/PLAN-2.2.vi.md). Tài khoản: `AccountManagement.cs`; giao diện tài khoản: `MainForm.Accounts.cs`; chọn/lọc: `MainForm.Selection.cs`; điều hướng/nhóm lệnh: `MainForm.Navigation.cs`; NAS: `MainForm.Nas.cs`, `Nas.cs`, `NasLabels.cs`; bản sao dữ liệu: `PrivateExport.cs`, `MainForm.PrivateExport.cs`.
 
 Windows: chạy `Build.cmd` với .NET SDK 8+. Linux cloud: `bash scripts/cloud-setup.sh`. Quy trình chạy kiểm tra chính sách, hồi quy NetAPI, build EXE và CI Windows UI/SMB/ACL/tài khoản dùng một lần. Bằng chứng và phạm vi kiểm chứng trong [WINDOWS-VALIDATION.vi.md](docs/WINDOWS-VALIDATION.vi.md) và `VALIDATION.json` trong gói tải. CI Windows không thay thế nghiệm thu RDP Windows 10 Pro/TrueNAS/GPO tại máy thật.
